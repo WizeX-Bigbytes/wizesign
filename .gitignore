@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Node/Frontend
+node_modules/
+dist/
+build/
+.npm/
+
+# IDEs
+.idea/
+.vscode/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-data/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# WizeSign specific
+backend/app/static/signatures/
