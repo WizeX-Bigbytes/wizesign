@@ -104,7 +104,13 @@ Run the following command to build and start the production containers:
 docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-### Step 3: Verify
+### Step 3: Initialize Database
+Run this command to create tables inside the secure container:
+```bash
+docker-compose -f docker-compose.prod.yml exec backend python init_db_prod.py
+```
+
+### Step 4: Verify
 *   Your app will be running on port `8082`.
 *   Access via: `http://localhost:8082` (or server IP).
 *   The database will be secure (not accessible from the internet).
