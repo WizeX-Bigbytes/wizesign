@@ -1,4 +1,5 @@
-export const API_BASE_URL = 'http://localhost:8000/api';
+// Use relative path for production (Nginx proxy) and development (Vite proxy)
+export const API_BASE_URL = '/api';
 
 export interface ApiError {
   detail: string;
