@@ -45,7 +45,7 @@ services:
     networks:
       - wizesign-prod-net
     ports:
-      - "80:80"
+      - "8082:80"
     restart: always
 
 volumes:

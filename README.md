@@ -105,7 +105,8 @@ docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
 ### Step 3: Verify
-*   Your app will be running on port `80`.
+*   Your app will be running on port `8082`.
+*   Access via: `http://localhost:8082` (or server IP).
 *   The database will be secure (not accessible from the internet).
 *   Services will restart automatically if the server reboots.
 
