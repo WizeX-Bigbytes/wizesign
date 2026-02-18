@@ -91,6 +91,26 @@ Ensure `DATABASE_URL` is set correctly for your context:
 
 ---
 
+## 🚀 4. Production Deployment
+
+### Step 1: Configure Environment
+1.  Open `.env.prod`.
+2.  Set strong passwords for `POSTGRES_PASSWORD` and `SECRET_KEY`.
+3.  Add your real `WIZECHAT_API_KEY`.
+
+### Step 2: Deploy
+Run the following command to build and start the production containers:
+```bash
+docker-compose -f docker-compose.prod.yml up -d --build
+```
+
+### Step 3: Verify
+*   Your app will be running on port `80`.
+*   The database will be secure (not accessible from the internet).
+*   Services will restart automatically if the server reboots.
+
+---
+
 ## 🛠 Troubleshooting
 
 *   **SSO Failed**: Check if `SECRET_KEY` matches WizeFlow. Verify `backend/app/routers/auth.py`.

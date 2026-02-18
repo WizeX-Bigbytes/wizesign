@@ -724,7 +724,6 @@ async def send_otp(
                         "dev_otp": otp_code  # Only in dev mode
                     }
                 
-                print(f"⚠️ PRODUCTION MODE - Calling WizeChat API...")
                 # In production, send via WizeChat
                 await wizechat_service.send_otp(
                     inbox_id=inbox_id,
@@ -735,7 +734,14 @@ async def send_otp(
                     api_key=api_key
                 )
                 
-                return {"success": True, "message": "OTP sent successfully"}
+                response = {"success": True, "message": "OTP sent successfully"}
+                
+                # Setup auto-fill for testing if enabled
+                if settings.APP_ENV == "development":
+                    print(f"🔐 DEV MODE - Including OTP in response for auto-fill")
+                    response["dev_otp"] = otp_code
+                
+                return response
             else:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

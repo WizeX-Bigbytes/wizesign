@@ -86,13 +86,25 @@ export const PatientView: React.FC = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
+
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.detail || 'Failed to send OTP');
             }
-            
+
+            const data = await response.json();
             setVerificationStep('OTP');
+
+            // Auto-fill OTP for testing if provided (Dev Mode)
+            if (data.dev_otp) {
+                toast.info(`🔐 DEV MODE: OTP is ${data.dev_otp}`);
+                console.log('Auto-filling OTP:', data.dev_otp);
+
+                // Small delay to allow UI transition
+                setTimeout(() => {
+                    handleVerifyOtp(data.dev_otp);
+                }, 1000);
+            }
         } catch (error) {
             console.error('Error sending OTP:', error);
             alert('Failed to send OTP. Please try again.');
@@ -109,12 +121,12 @@ export const PatientView: React.FC = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
-            
+
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.detail || 'Invalid OTP code');
             }
-            
+
             setVerificationStep('VERIFIED');
         } catch (error) {
             console.error('Error verifying OTP:', error);
