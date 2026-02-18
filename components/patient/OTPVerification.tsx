@@ -6,7 +6,7 @@ interface OTPVerificationProps {
     isProcessing: boolean;
     onSendCode: () => void;
     onVerifyCode: (code: string) => void;
-    onChangeNumber: () => void;
+    patientPhone?: string;
 }
 
 export const OTPVerification: React.FC<OTPVerificationProps> = ({
@@ -14,7 +14,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
     isProcessing,
     onSendCode,
     onVerifyCode,
-    onChangeNumber
+    patientPhone
 }) => {
     const [otpCode, setOtpCode] = useState('');
     const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -56,7 +56,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
                                 </div>
                                 <div>
                                     <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Mobile Number</p>
-                                    <p className="text-slate-900 font-mono font-medium">+1 (555) *** - 8821</p>
+                                    <p className="text-slate-900 font-mono font-medium">{patientPhone || '+1 (555) *** - 8821'}</p>
                                 </div>
                             </div>
                             <button

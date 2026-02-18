@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { useSaveTemplate, useSendToPatient } from '../hooks/useAppQueries';
+import { api } from '../services/api';
 import { CanvasArea } from './doctor/CanvasArea';
 import { EditorHeader } from './doctor/EditorHeader';
 import { EditorSidebar } from './doctor/EditorSidebar';
@@ -24,6 +25,8 @@ export const DoctorEditor: React.FC = () => {
     const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
     const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
     const [showSendModal, setShowSendModal] = useState(false);
+    const [patientLink, setPatientLink] = useState<string>('');
+    const [documentId, setDocumentId] = useState<string>('');
 
     // Redirect if no document loaded
     useEffect(() => {
@@ -33,12 +36,23 @@ export const DoctorEditor: React.FC = () => {
     }, [consentForm.fileUrl, navigate]);
 
     // Field Manipulation Handlers
-    const handleAddField = (type: 'TEXT' | 'DATE' | 'SIGNATURE' | 'TITLE') => {
+    const handleAddField = (type: string, config?: { label?: string, value?: string, source?: string }) => {
         const id = Math.random().toString(36).substr(2, 9);
         let newField: SmartField;
 
+        const baseField = {
+            id,
+            type: (type === 'TITLE' || type === 'DATE' || type === 'SIGNATURE') ? type : 'TEXT', // Map custom types to TEXT underlying type
+            x: 35, y: 45, w: 25, h: 3,
+            fontSize: 14,
+            fontWeight: 'normal',
+            textAlign: 'left' as const,
+            source: config?.source
+        };
+
         if (type === 'TITLE') {
             newField = {
+                ...baseField,
                 id: 'title-field-' + id,
                 type: 'TEXT',
                 label: 'Header Title',
@@ -48,26 +62,44 @@ export const DoctorEditor: React.FC = () => {
                 fontWeight: 'bold',
                 textAlign: 'center'
             };
-        } else {
+        } else if (type === 'SIGNATURE') {
             newField = {
-                id,
-                type,
-                label: type === 'SIGNATURE' ? 'Sign Here' : type === 'DATE' ? 'Date' : 'Text Field',
-                x: type === 'DATE' ? 75 : 35,
-                y: type === 'DATE' ? 19.5 : 45,
-                w: type === 'DATE' ? 15 : (type === 'SIGNATURE' ? 30 : 25),
-                h: type === 'DATE' ? 2.5 : (type === 'SIGNATURE' ? 5 : 3),
-                value: type === 'DATE' ? new Date().toLocaleDateString() : (type === 'TEXT' ? patientDetails.fullName : ''),
-                fontSize: type === 'SIGNATURE' ? undefined : 14,
-                fontWeight: 'normal',
-                textAlign: 'left'
+                ...baseField,
+                type: 'SIGNATURE',
+                label: 'Sign Here',
+                w: 30, h: 5,
+                value: '',
+                fontSize: undefined
+            };
+        } else if (type === 'DATE') {
+            newField = {
+                ...baseField,
+                type: 'DATE',
+                label: 'Date',
+                x: 75, y: 19.5, w: 15, h: 2.5,
+                value: new Date().toLocaleDateString()
+            };
+        } else {
+            // Generic or Smart Text Fields
+            newField = {
+                ...baseField,
+                type: 'TEXT',
+                label: config?.label || 'Text Field',
+                value: config?.value || '', // Use provided value or empty (no placeholder)
             };
         }
 
         addField(newField);
         setSelectedIds(new Set([newField.id]));
         setActiveFieldId(newField.id);
-        if (type !== 'SIGNATURE') setEditingFieldId(newField.id);
+        if (newField.type !== 'SIGNATURE') {
+            // Automatically focus/edit only if it's a generic text field with no value? 
+            // The user wanted "no placeholder", implying they might want to just drop it and have it be empty.
+            // If it's a smart field with a value, maybe don't auto-edit?
+            // Let's safe-guard: if it has a value, don't enter edit mode immediately?
+            // actually user usually wants to position it first.
+            setEditingFieldId(newField.id); 
+        }
     };
 
     const changeFontSize = (delta: number) => {
@@ -106,26 +138,103 @@ export const DoctorEditor: React.FC = () => {
         return errors.size === 0;
     };
 
-    const handleSendClick = () => {
+    const handleSendClick = async () => {
         if (!validateForm()) return;
-        setShowSendModal(true);
+        
+        // Generate preview link by creating document first
+        try {
+            // Convert blob URL to base64 if it's a blob
+            let fileContent = undefined;
+            console.log('🔍 File URL check:', consentForm.fileUrl);
+            if (consentForm.fileUrl?.startsWith('blob:')) {
+                console.log('📄 Converting blob URL to base64...');
+                try {
+                    const response = await fetch(consentForm.fileUrl);
+                    const blob = await response.blob();
+                    console.log('📦 Blob size:', blob.size, 'bytes, type:', blob.type);
+                    const reader = new FileReader();
+                    fileContent = await new Promise<string>((resolve) => {
+                        reader.onloadend = () => resolve(reader.result as string);
+                        reader.readAsDataURL(blob);
+                    });
+                    console.log('✅ Base64 conversion complete, length:', fileContent?.length);
+                } catch (error) {
+                    console.error('❌ Error converting blob to base64:', error);
+                }
+            } else {
+                console.log('⚠️ File URL is not a blob, skipping base64 conversion');
+            }
+            
+            console.log('📤 Creating document with:', {
+                file_url: consentForm.fileUrl,
+                has_file_content: !!fileContent,
+                file_content_length: fileContent?.length,
+                fields_count: consentForm.fields.length
+            });
+            
+            const docResponse = await api.createDocument({
+                patient: {
+                    full_name: patientDetails.fullName,
+                    email: patientDetails.email || undefined,
+                    phone: patientDetails.phone || undefined,
+                    dob: patientDetails.dob
+                },
+                procedure_name: consentForm.procedureName,
+                file_url: consentForm.fileUrl,
+                file_content: fileContent,  // Send base64 content
+                doctor_name: consentForm.doctorName,
+                clinic_name: consentForm.clinicName,
+                fields: consentForm.fields
+            });
+            
+            setPatientLink(docResponse.patient_link);
+            setDocumentId(docResponse.id);
+            setShowSendModal(true);
+        } catch (error) {
+            toast.error('Failed to generate document link');
+        }
     };
 
-    const confirmSend = () => {
-        sendToPatient(
-            { patient: patientDetails, form: consentForm },
-            {
-                onSuccess: () => {
-                    setShowSendModal(false);
-                    toast.success('Document sent to patient via WhatsApp!');
-                    navigate('/doctor/dashboard');
-                },
-                onError: () => {
-                    setShowSendModal(false);
-                    toast.error('Failed to send document. Please try again.');
-                }
+    const confirmSend = async () => {
+        try {
+            // First check WizeChat configuration
+            const wizechatStatus = await api.getWizeChatStatus();
+            
+            if (!wizechatStatus.configured) {
+                toast.error(`WizeChat not configured: ${wizechatStatus.message}. Please configure in Settings.`, {
+                    duration: 5000
+                });
+                return;
             }
-        );
+
+            // Validate patient phone number
+            if (!patientDetails.phone) {
+                toast.error('Patient phone number is required to send via WhatsApp');
+                return;
+            }
+
+            // Send via WhatsApp using the document ID
+            const result = await api.sendWhatsApp(documentId, {
+                inbox_id: '', // Will use hospital config
+                phone_number: patientDetails.phone,
+                send_via_whatsapp: true
+            });
+
+            if (result.success) {
+                toast.success('Document sent to patient via WhatsApp!');
+                setShowSendModal(false);
+                navigate('/doctor/dashboard');
+            } else {
+                toast.error(result.message || 'Failed to send document. Please try again.', {
+                    duration: 5000
+                });
+            }
+        } catch (error: any) {
+            const errorMessage = error?.message || error?.detail || 'Failed to send document. Please try again.';
+            toast.error(errorMessage, {
+                duration: 5000
+            });
+        }
     };
 
     const handleSaveAsTemplate = () => {
@@ -133,13 +242,33 @@ export const DoctorEditor: React.FC = () => {
             toast.error("Please ensure the document has a title and file.");
             return;
         }
-        saveTemplate({ name: consentForm.procedureName, file_url: consentForm.fileUrl }, {
-            onSuccess: () => toast.success('Template saved successfully!')
-        });
+        
+        // If template_id exists, update existing template instead of creating new one
+        if (consentForm.template_id) {
+            saveTemplate({ 
+                id: consentForm.template_id,
+                name: consentForm.procedureName, 
+                file_url: consentForm.fileUrl,
+                fields: consentForm.fields,
+                is_update: true
+            }, {
+                onSuccess: () => toast.success('Template updated successfully!')
+            });
+        } else {
+            // Create new template
+            saveTemplate({ 
+                name: consentForm.procedureName, 
+                file_url: consentForm.fileUrl,
+                fields: consentForm.fields
+            }, {
+                onSuccess: () => toast.success('Template saved successfully!')
+            });
+        }
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden p-4 md:p-6 bg-slate-50 relative">
+        <div className="flex flex-col h-full overflow-hidden bg-slate-50 relative -m-4 md:-m-6">
+            <div className="flex flex-col h-full bg-slate-50 p-4 md:p-6">
             <EditorHeader
                 procedureName={consentForm.procedureName}
                 onProcedureNameChange={(val) => updateConsentForm({ procedureName: val })}
@@ -148,10 +277,10 @@ export const DoctorEditor: React.FC = () => {
                 isSavingTemplate={isSavingTemplate}
                 onSend={handleSendClick}
                 isSending={isSending}
-                canSend={!!(patientDetails.fullName && consentForm.fields?.length)}
+                canSend={!!(patientDetails.fullName && patientDetails.phone && consentForm.fields?.length)}
             />
 
-            <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0">
+            <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0 mt-4 md:mt-2">
                 <EditorSidebar
                     selectedIds={selectedIds}
                     onClearSelection={() => setSelectedIds(new Set())}
@@ -184,7 +313,9 @@ export const DoctorEditor: React.FC = () => {
                 patientDetails={patientDetails}
                 form={consentForm}
                 isSending={isSending}
+                patientLink={patientLink}
             />
+            </div>
         </div>
     );
 };

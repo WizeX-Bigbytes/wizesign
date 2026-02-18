@@ -12,8 +12,7 @@ class SendWhatsAppRequest(BaseModel):
 
 class SendDocumentLinkRequest(BaseModel):
     """Request to send document link via WizeChat"""
-    document_id: str
-    inbox_id: str = None
+    inbox_id: str = "default-inbox"
     phone_number: str
     send_via_whatsapp: bool = True
 

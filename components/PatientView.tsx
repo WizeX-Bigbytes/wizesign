@@ -46,6 +46,7 @@ export const PatientView: React.FC = () => {
                     id: documentData.patient.id || 'unknown',
                     fullName: documentData.patient.full_name,
                     email: documentData.patient.email || '',
+                    phone: documentData.patient.phone || '',
                     dob: documentData.patient.dob || ''
                 },
                 {
@@ -77,22 +78,50 @@ export const PatientView: React.FC = () => {
         setIpAddress(`192.168.1.${Math.floor(Math.random() * 255)}`);
     }, []);
 
-    const handleSendOtp = () => {
+    const handleSendOtp = async () => {
         setIsProcessingOtp(true);
-        // Simulate API call for OTP (backend doesn't fully support OTP send yet, so verify is simulated)
-        setTimeout(() => {
-            setIsProcessingOtp(false);
+        try {
+            // Call real OTP API
+            const response = await fetch(`/api/documents/${consentForm.transactionId}/send-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to send OTP');
+            }
+            
             setVerificationStep('OTP');
-        }, 1500);
+        } catch (error) {
+            console.error('Error sending OTP:', error);
+            alert('Failed to send OTP. Please try again.');
+        } finally {
+            setIsProcessingOtp(false);
+        }
     };
 
-    const handleVerifyOtp = (code: string) => {
+    const handleVerifyOtp = async (code: string) => {
         setIsProcessingOtp(true);
-        // Simulate verification
-        setTimeout(() => {
-            setIsProcessingOtp(false);
+        try {
+            // Call real OTP verification API
+            const response = await fetch(`/api/documents/${consentForm.transactionId}/verify-otp?otp_code=${code}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Invalid OTP code');
+            }
+            
             setVerificationStep('VERIFIED');
-        }, 1500);
+        } catch (error) {
+            console.error('Error verifying OTP:', error);
+            alert(error instanceof Error ? error.message : 'Invalid OTP code. Please try again.');
+        } finally {
+            setIsProcessingOtp(false);
+        }
     };
 
     const handleSignatureSave = (sigData: string) => {
@@ -103,11 +132,15 @@ export const PatientView: React.FC = () => {
     const handleSubmit = () => {
         if (!signature || !agreed || !identityConfirmed) return;
 
+        const timestamp = new Date().toISOString();
         const newAuditEvents: AuditEvent[] = [
-            { timestamp: new Date().toISOString(), action: 'OTP_VERIFIED', actor: patientDetails.fullName, details: 'Mobile +1 (***) ***-8821' },
-            { timestamp: new Date().toISOString(), action: 'DOCUMENT_VIEWED', actor: patientDetails.fullName, details: `IP: ${ipAddress}` },
-            { timestamp: new Date().toISOString(), action: 'CONSENT_ACCEPTED', actor: patientDetails.fullName, details: 'Checkbox accepted' },
-            { timestamp: new Date().toISOString(), action: 'DOCUMENT_SIGNED', actor: patientDetails.fullName, details: `Browser: ${navigator.userAgent}` }
+            { timestamp, action: 'IDENTITY_VERIFIED', actor: patientDetails.fullName, details: 'OTP verification completed via mobile' },
+            { timestamp, action: 'DOCUMENT_ACCESSED', actor: patientDetails.fullName, details: `IP: ${ipAddress}, User-Agent: ${navigator.userAgent.substring(0, 50)}` },
+            { timestamp, action: 'IDENTITY_CONFIRMED', actor: patientDetails.fullName, details: 'Signer confirmed their identity' },
+            { timestamp, action: 'E_SIGNATURE_CONSENT', actor: patientDetails.fullName, details: 'Consented to electronic signature use and terms' },
+            { timestamp, action: 'DOCUMENT_REVIEWED', actor: patientDetails.fullName, details: 'Document content reviewed by signer' },
+            { timestamp, action: 'SIGNATURE_APPLIED', actor: patientDetails.fullName, details: 'Electronic signature created and applied' },
+            { timestamp, action: 'SIGNATURE_SUBMITTED', actor: patientDetails.fullName, details: `Final submission with intent to sign, IP: ${ipAddress}` }
         ];
 
         // Store update for immediate UI feedback
@@ -123,7 +156,15 @@ export const PatientView: React.FC = () => {
             signature,
             auditEvents: newAuditEvents
         }, {
-            onSuccess: () => {
+            onSuccess: (data) => {
+                // Update store with certificate data from response
+                updateConsentForm({
+                    signature,
+                    signedDate: new Date().toISOString(),
+                    auditTrail: [...(consentForm.auditTrail || []), ...newAuditEvents],
+                    certificateHash: data.certificate_hash,
+                    certificateIssuedAt: data.certificate_issued_at
+                });
                 toast.success("Document signed successfully!");
                 navigate('/completed');
             },
@@ -182,9 +223,7 @@ export const PatientView: React.FC = () => {
                 isProcessing={isProcessingOtp}
                 onSendCode={handleSendOtp}
                 onVerifyCode={handleVerifyOtp}
-                onChangeNumber={() => {
-                    setVerificationStep('START');
-                }}
+                patientPhone={patientDetails.phone}
             />
 
             {/* Brand Header */}

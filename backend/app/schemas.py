@@ -1,7 +1,8 @@
-from pydantic import BaseModel, EmailStr, UUID4
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Any
 from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 
 class RoleEnum(str, Enum):
@@ -33,13 +34,27 @@ class PatientBase(BaseModel):
     gender: Optional[str] = None
     address: Optional[str] = None
 
+    @field_validator('email', mode='before')
+    @classmethod
+    def empty_str_to_none_email(cls, v):
+        if v == '' or v is None:
+            return None
+        return v
+    
+    @field_validator('phone', mode='before')
+    @classmethod
+    def empty_str_to_none_phone(cls, v):
+        if v == '' or v is None:
+            return None
+        return v
+
 
 class PatientCreate(PatientBase):
     pass
 
 
 class PatientResponse(PatientBase):
-    id: UUID4
+    id: UUID
     created_at: datetime
 
     class Config:
@@ -67,21 +82,23 @@ class DocumentCreate(BaseModel):
     patient: PatientCreate
     procedure_name: str
     file_url: str
+    file_path: Optional[str] = None  # Local file path if uploaded
+    file_content: Optional[str] = None  # Base64 encoded file content
     doctor_name: Optional[str] = None
     clinic_name: Optional[str] = None
-    template_id: Optional[UUID4] = None
+    template_id: Optional[UUID] = None
     fields: Optional[List[SmartField]] = None
 
 
 class DocumentResponse(BaseModel):
-    id: UUID4
-    transaction_id: UUID4
+    id: UUID
+    transaction_id: UUID
     procedure_name: str
     file_url: str
     doctor_name: Optional[str]
     clinic_name: Optional[str]
     status: DocumentStatusEnum
-    secure_token: UUID4
+    secure_token: UUID
     patient_link: str  # The actual URL to send via WizeChat
     link_expiry: Optional[datetime]
     created_at: datetime
@@ -104,8 +121,8 @@ class SignatureSubmit(BaseModel):
 
 
 class DocumentDetailResponse(BaseModel):
-    id: UUID4
-    transaction_id: UUID4
+    id: UUID
+    transaction_id: UUID
     procedure_name: str
     file_url: str
     doctor_name: Optional[str]
@@ -114,6 +131,8 @@ class DocumentDetailResponse(BaseModel):
     fields: Optional[List[dict]]
     signature: Optional[str]
     signed_date: Optional[datetime]
+    certificate_hash: Optional[str]
+    certificate_issued_at: Optional[datetime]
     audit_trail: List[dict]
     patient: PatientResponse
 
@@ -134,7 +153,7 @@ class TemplateUpdate(BaseModel):
 
 
 class TemplateResponse(BaseModel):
-    id: UUID4
+    id: UUID
     name: str
     file_url: str
     category: Optional[str]
@@ -157,7 +176,7 @@ class UserCreate(UserBase):
 
 
 class UserResponse(UserBase):
-    id: UUID4
+    id: UUID
     created_at: datetime
 
     class Config:
@@ -167,14 +186,15 @@ class UserResponse(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    context: Optional[dict] = None  # Optional context for deep linking
 
 
 class TokenData(BaseModel):
-    user_id: Optional[UUID4] = None
+    user_id: Optional[UUID] = None
     email: Optional[str] = None
-    hospital_id: Optional[UUID4] = None
+    hospital_id: Optional[UUID] = None
     role: Optional[RoleEnum] = None
-    patient_id: Optional[UUID4] = None # For Deep Linking context
+    patient_id: Optional[UUID] = None # For Deep Linking context
 
 
 # ============ SSO Schemas (for WizeFlow integration) ============
@@ -223,7 +243,7 @@ class WizeChatConfig(BaseModel):
     template_name: Optional[str] = None
 
 class HospitalResponse(BaseModel):
-    id: UUID4
+    id: UUID
     name: str
     status: str
     wizechat_config: Optional[dict] = None

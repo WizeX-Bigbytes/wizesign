@@ -1,18 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
+from passlib.context import CryptContext
 
 from app.database import get_db
 from app.models import User, RoleEnum, Hospital, Patient
 from app.schemas import SSOTokenValidate, SSOUserData, Token, UserResponse, SSOHospitalData, SSOPatientData
 from app.config import settings
-from fastapi.security import OAuth2PasswordBearer
 import uuid
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -52,11 +56,48 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         
     return user
 
-@router.get("/me", response_model=UserResponse)
-async def read_users_me(current_user: User = Depends(get_current_user)):
-    """Get current user profile"""
-    return current_user
 
+@router.post("/login", response_model=Token)
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Standard email/password login for users not using SSO
+    """
+    # Find user by email
+    result = await db.execute(select(User).where(User.email == form_data.username))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Verify password (if user has a password set)
+    if not user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account requires SSO login",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not pwd_context.verify(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Create access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/sso/validate", response_model=Token)
@@ -133,13 +174,6 @@ async def validate_sso_token(
         db.add(user)
         await db.commit()
         await db.refresh(user)
-
-    return user
-
-@router.get("/me", response_model=UserResponse)
-async def read_users_me(current_user: User = Depends(get_current_user)):
-    """Get current user profile"""
-    return current_user
     else:
         # Update user details
         user.name = user_data.get("name")
@@ -195,7 +229,27 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
         expires_delta=access_token_expires
     )
     
-    return Token(access_token=access_token, token_type="bearer")
+    # Build response with context
+    response_context = None
+    if context_patient_id:
+        # Reload patient to get full details for frontend
+        p_result = await db.execute(select(Patient).where(Patient.id == uuid.UUID(context_patient_id)))
+        patient_obj = p_result.scalar_one_or_none()
+        
+        response_context = {
+            "patient_id": context_patient_id,
+            "patient_name": patient_obj.full_name if patient_obj else None,
+            "patient_email": patient_obj.email if patient_obj else None,
+            "patient_phone": patient_obj.phone if patient_obj else None,
+            "patient_dob": patient_obj.dob if patient_obj else None,
+            "action": "send"
+        }
+    
+    return Token(
+        access_token=access_token, 
+        token_type="bearer",
+        context=response_context
+    )
 
 
 @router.post("/sso/wizeflow", response_model=Token)
@@ -223,7 +277,7 @@ async def wizeflow_sso_login(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(
+async def read_users_me(
     authorization: str = Header(...),
     db: AsyncSession = Depends(get_db)
 ):
@@ -298,14 +352,15 @@ async def generate_test_token(
             },
             # Optional Patient Context
             "patient": {
-                "id": "p1", # Matches seed data external_id
-                "name": "Patient 1",
-                "email": "patient1@example.com",
-                "phone": "555-0000",
-                "reg_no": "P24-00001",
-                "age": 25,
+                "id": "p_test", # Matches seed data external_id
+                "name": "Test Patient",
+                "email": "test.patient@example.com",
+                "phone": "+919539170177",
+                "dob": "1996-01-15",
+                "reg_no": "P_TEST",
+                "age": 30,
                 "gender": "M",
-                "address": "123 Test St"
+                "address": "123 Test Street"
             }
         }
         

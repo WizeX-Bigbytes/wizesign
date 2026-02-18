@@ -170,6 +170,13 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                                 backgroundSize: '100% 100%',
                                 backgroundRepeat: 'no-repeat',
                             }}
+                            onClick={(e) => { 
+                                if (e.target === e.currentTarget) { 
+                                    setSelectedIds(new Set()); 
+                                    setActiveFieldId(null); 
+                                    setEditingFieldId(null);
+                                } 
+                            }}
                         >
                             {/* Render Fields */}
                             {consentForm.fields?.map((field) => {
@@ -194,7 +201,17 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                                                 <input autoFocus className="w-full h-full bg-transparent border-none outline-none font-sans font-medium p-1 text-slate-900" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any }} value={field.value || ''} onChange={(e) => { updateField(field.id, { value: e.target.value }); if (validationErrors.has(field.id)) { onClearValidationError(field.id); } }} onBlur={() => { setEditingFieldId(null); if (field.id.includes('title-field')) updateConsentForm({ procedureName: field.value }); }} onMouseDown={(e) => e.stopPropagation()} />
                                             ) : (
                                                 <div className={`w-full h-full flex items-center ${field.type === 'SIGNATURE' ? 'justify-center' : 'justify-start px-1'}`}>
-                                                    {field.type === 'SIGNATURE' ? <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-amber-600' : 'text-amber-600/50'}`}>Signature</span> : <span className="font-sans font-medium text-slate-900 truncate w-full" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any }}>{field.value || <span className="text-slate-400/70 italic font-normal">{field.label}</span>}</span>}
+                                                    {field.type === 'SIGNATURE' ? (
+                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-amber-600' : 'text-amber-600/50'}`}>Signature</span>
+                                                    ) : (
+                                                        <span className="truncate w-full font-sans" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any }}>
+                                                            {field.value ? (
+                                                                <span className="text-slate-900">{field.value}</span>
+                                                            ) : (
+                                                                <span className="text-slate-400/50 italic font-normal">{field.label}</span>
+                                                            )}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             )}
                                             {(isSelected || isError) && <div className={`absolute -top-5 left-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded text-white shadow-sm whitespace-nowrap pointer-events-none ${isError ? 'bg-red-500' : 'bg-blue-500'}`}>{isError ? 'Required' : field.label}</div>}

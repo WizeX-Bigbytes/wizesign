@@ -11,32 +11,51 @@ export const SSOHandler: React.FC = () => {
 
     useEffect(() => {
         const handleSSO = async () => {
-            const token = searchParams.get('token');
+            let token = searchParams.get('token');
             if (!token) {
                 setError("No SSO token provided");
                 return;
+            }
+
+            // Dev shortcut: convert placeholder token into a real signed token
+            if (token === 'test-doctor-token' || token === 'test') {
+                const testTokenResponse = await api.generateTestToken();
+                token = testTokenResponse.token;
             }
 
             try {
                 // Validate with backend
                 const response = await api.validateSSO(token);
 
-                // Store session
+                // Store session with correct key
                 localStorage.setItem('access_token', response.access_token);
 
-                // Decode token to check for context
-                // const decoded: any = jwtDecode(response.access_token);
-                // const patientId = decoded.patient_id; 
-                // Alternatively, backend might return context in response body if we structured it that way
-                // api.ts defined response as { access_token, context? }
+                // Check for patient context in both response.context and decoded JWT
+                let contextPatientId = response.context?.patient_id;
+                if (!contextPatientId) {
+                    const decodedToken = parseJwt(response.access_token);
+                    contextPatientId = decodedToken?.patient_id;
+                }
 
-                const contextPatientId = response.context?.patient_id || parseJwt(response.access_token)?.patient_id;
+                console.log('SSO validated. Patient context:', contextPatientId);
 
                 toast.success("Authenticated via WizeFlow");
 
                 if (contextPatientId) {
-                    // Deep Link Mode
-                    navigate(`/doctor/dashboard?action=send&patient_id=${contextPatientId}`, { replace: true });
+                    // Deep Link Mode - redirect to dashboard with patient context
+                    console.log('Deep linking to patient:', contextPatientId);
+                    
+                    // Build URL with all patient details
+                    const params = new URLSearchParams({
+                        action: 'send',
+                        patient_id: contextPatientId,
+                        patient_name: response.context?.patient_name || '',
+                        patient_email: response.context?.patient_email || '',
+                        patient_phone: response.context?.patient_phone || '',
+                        patient_dob: response.context?.patient_dob || ''
+                    });
+                    
+                    navigate(`/doctor/dashboard?${params.toString()}`, { replace: true });
                 } else {
                     // Standard Login
                     navigate('/doctor/dashboard', { replace: true });

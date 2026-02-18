@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, Edit2, Save, Send, Loader2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Save, Send, Loader2 } from 'lucide-react';
 
 interface EditorHeaderProps {
     procedureName: string;
@@ -25,8 +25,9 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
     return (
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4 shrink-0 px-1">
             <div className="flex items-center gap-3">
-                <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
-                    <Layout className="w-5 h-5" />
+                <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-lg text-slate-700 hover:text-slate-900 transition-colors flex items-center gap-2">
+                    <ArrowLeft className="w-5 h-5" />
+                    <span className="hidden sm:inline font-medium text-sm">Back</span>
                 </button>
                 <div className="group relative flex-1">
                     <input

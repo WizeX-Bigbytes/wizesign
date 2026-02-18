@@ -10,6 +10,7 @@ export interface PatientDetails {
   fullName: string;
   dob: string;
   email: string;
+  phone?: string;
 }
 
 export interface AuditEvent {
@@ -28,12 +29,14 @@ export interface SmartField {
   w: number; // Percentage width
   h: number; // Percentage height
   value?: string; // The prefilled text
+  source?: string; // Link to a data source (e.g. 'patient.fullName')
   fontSize?: number; // Font size in pixels
   fontWeight?: string; // 'normal' | 'bold'
   textAlign?: 'left' | 'center' | 'right';
 }
 
 export interface ConsentForm {
+  template_id?: string; // ID of the template if editing existing
   procedureName: string;
   doctorName: string;
   clinicName: string;
@@ -46,6 +49,8 @@ export interface ConsentForm {
   signedDate?: string;
   transactionId?: string;
   auditTrail?: AuditEvent[];
+  certificateHash?: string;
+  certificateIssuedAt?: string;
 }
 
 export interface SignaturePadProps {

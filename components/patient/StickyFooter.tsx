@@ -35,14 +35,17 @@ export const StickyFooter: React.FC<StickyFooterProps> = ({
                         </div>
                         <span className="text-slate-700 group-hover:text-slate-900 select-none">I confirm I am <strong>{patientName}</strong></span>
                     </label>
-                    <label className="flex items-center gap-3 cursor-pointer group p-1 md:p-0">
-                        <div className="relative flex items-center">
+                    <label className="flex items-start gap-3 cursor-pointer group p-1 md:p-0">
+                        <div className="relative flex items-center mt-0.5">
                             <input type="checkbox" checked={agreed} onChange={e => onAgreedChange(e.target.checked)} className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-300 bg-white transition-all checked:border-blue-600 checked:bg-blue-600 focus:ring-2 focus:ring-blue-200" />
                             <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                             </div>
                         </div>
-                        <span className="text-slate-700 group-hover:text-slate-900 select-none">I agree to the terms & conditions</span>
+                        <span className="text-slate-700 group-hover:text-slate-900 select-none text-xs leading-relaxed">
+                            I consent to use electronic signatures and agree that my electronic signature is legally binding. 
+                            I have read and agree to the document contents and the <a href="#" className="text-blue-600 hover:underline font-semibold">Electronic Signature Disclosure & Terms of Service</a>.
+                        </span>
                     </label>
                 </div>
                 <button

@@ -44,7 +44,8 @@ export const useSendToPatient = () => {
         const docResponse = await api.createDocument({
             patient: {
                 full_name: data.patient.fullName,
-                email: data.patient.email,
+                email: data.patient.email || undefined, // Send undefined if empty to avoid validation error
+                phone: data.patient.phone || undefined,
                 dob: data.patient.dob
             },
             procedure_name: data.form.procedureName,

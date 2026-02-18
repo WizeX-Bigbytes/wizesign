@@ -54,7 +54,7 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)  # Nullable for SSO-only users
     role = Column(Enum(RoleEnum), default=RoleEnum.DOCTOR)
     
     # Metadata from WizeFlow
@@ -130,7 +130,8 @@ class Document(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     transaction_id = Column(UUID(as_uuid=True), unique=True, default=uuid.uuid4, index=True)
     procedure_name = Column(String, nullable=False)
-    file_url = Column(Text, nullable=False)
+    file_url = Column(Text, nullable=False)  # Original URL (blob or external)
+    file_path = Column(Text, nullable=True)  # Local file path on server
     doctor_name = Column(String, nullable=True)
     clinic_name = Column(String, nullable=True)
     status = Column(Enum(DocumentStatusEnum), default=DocumentStatusEnum.DRAFT, index=True)
@@ -154,6 +155,16 @@ class Document(Base):
     signature = Column(Text, nullable=True)
     signed_date = Column(DateTime, nullable=True)
     ip_address = Column(String, nullable=True)
+    
+    # Digital Certificate
+    certificate_hash = Column(String, nullable=True, index=True)
+    certificate_issued_at = Column(DateTime, nullable=True)
+    
+    # OTP Verification
+    otp_code = Column(String, nullable=True)  # Store hashed OTP
+    otp_sent_at = Column(DateTime, nullable=True)
+    otp_verified_at = Column(DateTime, nullable=True)
+    otp_attempts = Column(Integer, default=0)
 
     # Fields (JSON)
     fields = Column(JSON, nullable=True)

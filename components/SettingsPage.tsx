@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { toast } from 'sonner';
-import { Save, MessageSquare, Key, Hash, FileText, User, Building } from 'lucide-react';
+import { Save, MessageSquare, Key, Hash, FileText, User, Building, ArrowLeft } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { useNavigate } from 'react-router-dom';
 
 export const SettingsPage: React.FC = () => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [profile, setProfile] = useState<any>(null);
     const [hospital, setHospital] = useState<any>(null);
+    const [wizechatStatus, setWizechatStatus] = useState<any>(null);
 
     const [formData, setFormData] = useState({
         api_key: '',
@@ -24,13 +27,15 @@ export const SettingsPage: React.FC = () => {
 
     const fetchData = async () => {
         try {
-            const [userRes, hospitalRes] = await Promise.all([
+            const [userRes, hospitalRes, statusRes] = await Promise.all([
                 api.getMe(),
-                api.getMyHospital()
+                api.getMyHospital(),
+                api.getWizeChatStatus()
             ]);
 
             setProfile(userRes);
             setHospital(hospitalRes);
+            setWizechatStatus(statusRes);
 
             if (hospitalRes && hospitalRes.wizechat_config) {
                 setFormData({
@@ -59,6 +64,10 @@ export const SettingsPage: React.FC = () => {
                 wizechat_config: formData
             });
             toast.success("Settings saved successfully!");
+            
+            // Refresh status after save
+            const statusRes = await api.getWizeChatStatus();
+            setWizechatStatus(statusRes);
         } catch (error) {
             console.error("Failed to save settings", error);
             toast.error("Failed to save settings");
@@ -68,11 +77,21 @@ export const SettingsPage: React.FC = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-                <p className="text-slate-500">Manage your profile and integrations.</p>
-            </div>
+        <div className="h-full overflow-y-auto">
+            <div className="max-w-4xl mx-auto py-4 px-4 space-y-8 pb-12">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/doctor/dashboard')}
+                        className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="font-medium">Back</span>
+                    </button>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+                        <p className="text-slate-500">Manage your profile and integrations.</p>
+                    </div>
+                </div>
 
             {/* Read-Only Profile Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -117,14 +136,40 @@ export const SettingsPage: React.FC = () => {
 
             {/* WizeChat Integration Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="border-b border-slate-200 px-6 py-4 flex items-center gap-2 bg-slate-50">
-                    <div className="bg-green-100 p-2 rounded-lg">
-                        <MessageSquare className="w-5 h-5 text-green-600" />
+                <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
+                    <div className="flex items-center gap-2">
+                        <div className="bg-green-100 p-2 rounded-lg">
+                            <MessageSquare className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold text-slate-900">WizeChat Integration</h2>
+                            <p className="text-xs text-slate-500">Configure WhatsApp sending via WizeChat API</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="font-semibold text-slate-900">WizeChat Integration</h2>
-                        <p className="text-xs text-slate-500">Configure WhatsApp sending via WizeChat API</p>
-                    </div>
+                    {/* Status Badge */}
+                    {wizechatStatus && (
+                        <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
+                            wizechatStatus.configured 
+                                ? 'bg-green-100 text-green-700 border border-green-200' 
+                                : 'bg-red-100 text-red-700 border border-red-200'
+                        }`}>
+                            {wizechatStatus.configured ? (
+                                <>
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    Configured
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    Not Configured
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -206,6 +251,7 @@ export const SettingsPage: React.FC = () => {
                     </div>
                 </form>
             </div>
+        </div>
         </div>
     );
 };

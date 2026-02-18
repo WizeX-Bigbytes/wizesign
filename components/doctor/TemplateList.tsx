@@ -12,7 +12,7 @@ interface Template {
 
 interface TemplateListProps {
     templates: Template[] | undefined;
-    onSelect: (url: string, name: string) => void;
+    onSelect: (url: string, name: string, templateId?: string) => void;
     onCreate: () => void;
     onRename: (id: string, newName: string) => void;
     onDelete: (id: string) => void;
@@ -83,7 +83,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
 
     return (
         <div className="max-w-6xl mx-auto h-full flex flex-col relative px-4 md:px-6">
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 shrink-0 pt-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 shrink-0 pt-2">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">E-Sign Templates</h1>
                     <p className="text-slate-500 text-sm mt-1">Manage and select consent templates for your patients</p>
@@ -108,7 +108,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                         <div
                             key={t.id}
                             className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-blue-200 transition-all duration-300 flex flex-col overflow-hidden h-full relative cursor-pointer ring-0 hover:ring-2 ring-blue-500/10"
-                            onClick={() => { if (!activeMenuId && renamingTemplateId !== t.id) onSelect(t.url, t.name); }}
+                            onClick={() => { if (!activeMenuId && renamingTemplateId !== t.id) onSelect(t.url, t.name, t.id); }}
                         >
                             {/* Preview Area */}
                             <div className="h-48 bg-slate-50/50 border-b border-slate-100 flex items-center justify-center relative overflow-hidden">

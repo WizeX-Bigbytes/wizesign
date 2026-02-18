@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Zap, User, LogOut, Settings } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
@@ -8,6 +8,8 @@ const DoctorHeader: React.FC = () => {
     const navigate = useNavigate();
 
     const handleLogout = () => {
+        // Clear token and reset session
+        localStorage.removeItem('access_token');
         resetSession();
         navigate('/');
     };
@@ -26,8 +28,8 @@ const DoctorHeader: React.FC = () => {
             </div>
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-6">
-                {/* User Profile Snippet */}
+            <div className="flex items-center gap-4">
+                {/* User Profile Snippet - Hidden on mobile */}
                 <div className="hidden md:flex items-center gap-3 pl-6 border-l border-slate-100">
                     <div className="text-right">
                         <p className="text-sm font-bold text-slate-900">Dr. Michael Chen</p>
@@ -38,20 +40,24 @@ const DoctorHeader: React.FC = () => {
                     </div>
                 </div>
 
+                <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
+
                 <button
                     onClick={() => navigate('/doctor/settings')}
-                    className="flex items-center gap-2 text-slate-500 hover:text-blue-600 text-sm font-medium transition-colors mr-4"
+                    className="flex items-center gap-2 text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+                    title="Settings"
                 >
-                    <Settings className="w-4 h-4" />
-                    <span className="hidden sm:inline">Settings</span>
+                    <Settings className="w-5 h-5" />
+                    <span className="font-medium text-sm">Settings</span>
                 </button>
 
                 <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 text-slate-500 hover:text-red-600 text-sm font-medium transition-colors"
+                    className="flex items-center gap-2 text-slate-500 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                    title="Logout"
                 >
-                    <LogOut className="w-4 h-4" />
-                    <span className="hidden sm:inline">Back to Hub</span>
+                    <LogOut className="w-5 h-5" />
+                    <span className="hidden sm:inline font-medium text-sm">Logout</span>
                 </button>
             </div>
         </nav>
@@ -59,6 +65,17 @@ const DoctorHeader: React.FC = () => {
 };
 
 export const DoctorLayout: React.FC = () => {
+    const navigate = useNavigate();
+
+    // Check authentication on mount and protect routes
+    useEffect(() => {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            console.warn('No access token found, redirecting to login page');
+            navigate('/', { replace: true });
+        }
+    }, [navigate]);
+
     return (
         <div className="h-screen bg-slate-50 font-sans text-slate-900 flex flex-col overflow-hidden">
             <DoctorHeader />
