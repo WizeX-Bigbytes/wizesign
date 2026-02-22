@@ -27,6 +27,7 @@ export const DoctorEditor: React.FC = () => {
     const [showSendModal, setShowSendModal] = useState(false);
     const [patientLink, setPatientLink] = useState<string>('');
     const [documentId, setDocumentId] = useState<string>('');
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Redirect if no document loaded
     useEffect(() => {
@@ -47,7 +48,8 @@ export const DoctorEditor: React.FC = () => {
             fontSize: 14,
             fontWeight: 'normal',
             textAlign: 'left' as const,
-            source: config?.source
+            source: config?.source,
+            page: currentPage
         };
 
         if (type === 'TITLE') {
@@ -347,6 +349,8 @@ export const DoctorEditor: React.FC = () => {
                             setValidationErrors(newErrors);
                         }}
                         isProcessingPdf={false} // Since we load before navigating
+                        currentPage={currentPage}
+                        setCurrentPage={setCurrentPage}
                     />
                 </div>
 

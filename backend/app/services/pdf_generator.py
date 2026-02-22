@@ -80,43 +80,68 @@ class PDFGeneratorService:
                     page_width = float(page.mediabox.width)
                     page_height = float(page.mediabox.height)
                     
-                    # Check if there's a signature field on this page
-                    signature_field = None
+                    # Gather fields for this page
+                    page_fields = []
                     if signature_fields:
                         for field in signature_fields:
-                            if field.get('type') == 'SIGNATURE':
-                                signature_field = field
-                                break
+                            # Frontend pages are 1-indexed, pdf pages are 0-indexed
+                            field_page = field.get('page', 1)
+                            if field_page - 1 == page_num:
+                                page_fields.append(field)
                     
-                    if signature_field:
-                        # Create overlay with signature
+                    if page_fields:
+                        # Create overlay with signature and text fields
                         packet = io.BytesIO()
                         can = canvas.Canvas(packet, pagesize=(page_width, page_height))
                         
-                        # Convert percentage-based coordinates to PDF coordinates
-                        # Fields use percentage (0-100) from top-left
-                        # PDF uses points from bottom-left
-                        x_percent = signature_field.get('x', 10)
-                        y_percent = signature_field.get('y', 70)
-                        w_percent = signature_field.get('w', 30)
-                        h_percent = signature_field.get('h', 10)
-                        
-                        # Calculate actual positions
-                        x_pos = (x_percent / 100) * page_width
-                        y_pos = page_height - ((y_percent / 100) * page_height) - ((h_percent / 100) * page_height)
-                        width = (w_percent / 100) * page_width
-                        height = (h_percent / 100) * page_height
-                        
-                        # Draw signature image at the field position
-                        temp_sig.seek(0)
-                        can.drawImage(
-                            ImageReader(temp_sig),
-                            x_pos, y_pos,
-                            width=width,
-                            height=height,
-                            preserveAspectRatio=True,
-                            mask='auto'
-                        )
+                        for field in page_fields:
+                            # Convert percentage-based coordinates to PDF coordinates
+                            # Fields use percentage (0-100) from top-left
+                            # PDF uses points from bottom-left
+                            x_percent = field.get('x', 10)
+                            y_percent = field.get('y', 70)
+                            w_percent = field.get('w', 30)
+                            h_percent = field.get('h', 10)
+                            
+                            # Calculate actual positions
+                            x_pos = (x_percent / 100) * page_width
+                            y_pos = page_height - ((y_percent / 100) * page_height) - ((h_percent / 100) * page_height)
+                            width = (w_percent / 100) * page_width
+                            height = (h_percent / 100) * page_height
+                            
+                            field_type = field.get('type')
+                            
+                            if field_type == 'SIGNATURE':
+                                # Draw signature image at the field position
+                                temp_sig.seek(0)
+                                can.drawImage(
+                                    ImageReader(temp_sig),
+                                    x_pos, y_pos,
+                                    width=width,
+                                    height=height,
+                                    preserveAspectRatio=True,
+                                    mask='auto'
+                                )
+                            elif field_type in ['TEXT', 'DATE', 'TITLE']:
+                                value = field.get('value', '')
+                                if value:
+                                    font_size = field.get('fontSize', 14)
+                                    is_bold = field.get('fontWeight') == 'bold'
+                                    font_name = "Helvetica-Bold" if is_bold else "Helvetica"
+                                    
+                                    can.setFont(font_name, font_size)
+                                    can.setFillColorRGB(0, 0, 0)
+                                    
+                                    # Adjust y_pos for text (bottom-left origin, need to add height or use baseline)
+                                    text_y = y_pos + (height * 0.2)
+                                    
+                                    align = field.get('textAlign', 'left')
+                                    if align == 'center':
+                                        can.drawCentredString(x_pos + width/2, text_y, value)
+                                    elif align == 'right':
+                                        can.drawRightString(x_pos + width, text_y, value)
+                                    else:
+                                        can.drawString(x_pos, text_y, value)
                         
                         can.save()
                         packet.seek(0)

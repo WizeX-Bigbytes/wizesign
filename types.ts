@@ -28,6 +28,7 @@ export interface SmartField {
   y: number; // Percentage 0-100
   w: number; // Percentage width
   h: number; // Percentage height
+  page?: number; // The page number this field belongs to (1-indexed)
   value?: string; // The prefilled text
   source?: string; // Link to a data source (e.g. 'patient.fullName')
   fontSize?: number; // Font size in pixels

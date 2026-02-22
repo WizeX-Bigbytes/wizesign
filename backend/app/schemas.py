@@ -70,6 +70,7 @@ class SmartField(BaseModel):
     y: float
     w: float
     h: float
+    page: Optional[int] = 1
     value: Optional[str] = None
     fontSize: Optional[int] = None
     fontWeight: Optional[str] = None
