@@ -8,11 +8,13 @@ interface Template {
     name: string;
     url: string;
     updatedAt?: string;
+    category?: string;
+    fields?: any[];
 }
 
 interface TemplateListProps {
     templates: Template[] | undefined;
-    onSelect: (url: string, name: string, templateId?: string) => void;
+    onSelect: (url: string, name: string, templateId?: string, fields?: any[]) => void;
     onCreate: () => void;
     onRename: (id: string, newName: string) => void;
     onDelete: (id: string) => void;
@@ -108,7 +110,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                         <div
                             key={t.id}
                             className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-blue-200 transition-all duration-300 flex flex-col overflow-hidden h-full relative cursor-pointer ring-0 hover:ring-2 ring-blue-500/10"
-                            onClick={() => { if (!activeMenuId && renamingTemplateId !== t.id) onSelect(t.url, t.name, t.id); }}
+                            onClick={() => { if (!activeMenuId && renamingTemplateId !== t.id) onSelect(t.url, t.name, t.id, t.fields); }}
                         >
                             {/* Preview Area */}
                             <div className="h-48 bg-slate-50/50 border-b border-slate-100 flex items-center justify-center relative overflow-hidden">
@@ -129,7 +131,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                                             <h3 className="font-bold text-slate-900 text-base leading-tight truncate group-hover:text-blue-600 transition-colors" title={t.name}>{t.name}</h3>
                                         )}
                                         <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                                            <Clock className="w-3 h-3" /> Updated 2d ago
+                                            <Clock className="w-3 h-3" />
+                                            {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : 'Recently'}
                                         </p>
                                     </div>
                                     <div className="relative" ref={activeMenuId === t.id ? menuRef : null}>
@@ -151,7 +154,11 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                                 </div>
 
                                 <div className="mt-auto pt-3 flex items-center justify-between border-t border-slate-50">
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider">Surgical</span>
+                                    {t.category ? (
+                                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider">{t.category}</span>
+                                    ) : (
+                                        <span></span>
+                                    )}
                                     <span className="text-[10px] font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md">v1.0</span>
                                 </div>
                             </div>

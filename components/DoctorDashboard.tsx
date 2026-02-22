@@ -45,10 +45,10 @@ export const DoctorDashboard: React.FC = () => {
   useEffect(() => {
     const action = searchParams.get('action');
     const pId = searchParams.get('patient_id');
-    
+
     if (pId) {
       console.log(`SSO Deep Link detected: action=${action}, patient_id=${pId}`);
-      
+
       // Update patient details in store from URL params
       updatePatientDetails({
         id: pId,
@@ -97,33 +97,72 @@ export const DoctorDashboard: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isProcessingPdf, setIsProcessingPdf] = useState(false);
 
-  const handleTemplateSelect = (url: string, name: string, templateId?: string) => {
-    setDocumentFile(url, 'image/jpeg');
-    updateConsentForm({ 
-      procedureName: name,
-      template_id: templateId // Track template ID for updates
-    });
+  const handleTemplateSelect = async (url: string, name: string, templateId?: string, fields?: any[]) => {
+    setIsProcessingPdf(true);
+    try {
+      // 1. Fetch the PDF Blob from the API with proper Auth headers
+      const response = await fetch(api.resolveUrl(url), {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
 
-    // Pre-fill fields for existing template 
-    // In a real app, the template would store its fields configuration. 
-    // Here we hardcode the fields generator for demo purposes as per original code.
-    setFields([
-      {
-        id: 'title-field',
-        type: 'TEXT',
-        label: 'Form Title',
-        x: 5, y: 5, w: 90, h: 6,
-        value: name.toUpperCase(),
-        fontSize: 24,
-        fontWeight: 'bold',
-        textAlign: 'center'
-      },
-      { id: 'f1', type: 'TEXT', label: 'Patient Name', x: 14, y: 19.5, w: 35, h: 2.5, value: patientDetails.fullName || '', fontSize: 14 },
-      { id: 'f2', type: 'DATE', label: 'Date', x: 75, y: 19.5, w: 15, h: 2.5, value: new Date().toLocaleDateString(), fontSize: 14 },
-      { id: 'f3', type: 'SIGNATURE', label: 'Patient Signature', x: 15, y: 92, w: 40, h: 4 }
-    ]);
+      if (!response.ok) throw new Error("Failed to download template");
 
-    navigate('/doctor/editor');
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+
+      // 2. Render PDF to Image using PDF.js
+      const loadingTask = getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(1);
+
+      const originalViewport = page.getViewport({ scale: 1 });
+      const scale = 1600 / originalViewport.width;
+      const viewport = page.getViewport({ scale });
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      if (context) {
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: context, viewport }).promise;
+
+        const imgUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+        // 3. Set standard template data in store
+        // Use the original URL (now authenticated if needed later) as the original PDF blob reference
+        const fileUrl = URL.createObjectURL(blob);
+
+        // Store both the PDF for saving and the Image for visual canvas rendering
+        setDocumentFile(fileUrl, 'application/pdf', imgUrl);
+
+        updateConsentForm({
+          procedureName: name,
+          template_id: templateId // Track template ID for updates
+        });
+
+        if (fields && fields.length > 0) {
+          setFields(fields);
+        } else {
+          setFields([
+            { id: 'title-field', type: 'TEXT', label: 'Form Title', x: 5, y: 5, w: 90, h: 6, value: name.toUpperCase(), fontSize: 24, fontWeight: 'bold', textAlign: 'center' },
+            { id: 'f1', type: 'TEXT', label: 'Patient Name', x: 14, y: 19.5, w: 35, h: 2.5, value: patientDetails.fullName || '', fontSize: 14 },
+            { id: 'f2', type: 'DATE', label: 'Date', x: 75, y: 19.5, w: 15, h: 2.5, value: new Date().toLocaleDateString(), fontSize: 14 },
+            { id: 'f3', type: 'SIGNATURE', label: 'Patient Signature', x: 15, y: 92, w: 40, h: 4 }
+          ]);
+        }
+
+        navigate('/doctor/editor');
+      }
+    } catch (err) {
+      console.error("Template rendering failed", err);
+      alert("Error loading template document. Please try again.");
+    } finally {
+      setIsProcessingPdf(false);
+    }
   };
 
   const handleCreateSession = async (name: string, file: File) => {
@@ -133,7 +172,7 @@ export const DoctorDashboard: React.FC = () => {
     try {
       // Keep the original file as a blob URL for the editor
       const fileUrl = URL.createObjectURL(file);
-      
+
       const arrayBuffer = await file.arrayBuffer();
       const loadingTask = getDocument({ data: arrayBuffer });
       const pdf = await loadingTask.promise;
@@ -156,7 +195,7 @@ export const DoctorDashboard: React.FC = () => {
         const imgUrl = canvas.toDataURL('image/jpeg', 0.9);
 
         // Store BOTH: preview image for UI AND original PDF blob URL
-        setDocumentFile(fileUrl, 'application/pdf'); // Original PDF blob
+        setDocumentFile(fileUrl, 'application/pdf', imgUrl);
         updateConsentForm({ procedureName: nameToUse });
 
         setFields([
@@ -235,27 +274,25 @@ export const DoctorDashboard: React.FC = () => {
         <div className="flex gap-1 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/60 w-fit mb-2">
           <button
             onClick={() => setViewMode('templates')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-              viewMode === 'templates'
-                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'templates'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
           >
             <FolderOpen className="w-4 h-4" />
             Templates
           </button>
           <button
             onClick={() => setViewMode('documents')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-              viewMode === 'documents'
-                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'documents'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
           >
             <FileText className="w-4 h-4" />
             Documents
             {documents.length > 0 && (
-                <span className="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded text-[10px] ml-1">{documents.length}</span>
+              <span className="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded text-[10px] ml-1">{documents.length}</span>
             )}
           </button>
         </div>

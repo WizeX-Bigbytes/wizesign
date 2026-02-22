@@ -166,16 +166,16 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                             style={{
                                 width: '100%',
                                 height: '100%',
-                                backgroundImage: `url(${consentForm.fileUrl})`,
+                                backgroundImage: `url(${consentForm.previewUrl || consentForm.fileUrl})`,
                                 backgroundSize: '100% 100%',
                                 backgroundRepeat: 'no-repeat',
                             }}
-                            onClick={(e) => { 
-                                if (e.target === e.currentTarget) { 
-                                    setSelectedIds(new Set()); 
-                                    setActiveFieldId(null); 
+                            onClick={(e) => {
+                                if (e.target === e.currentTarget) {
+                                    setSelectedIds(new Set());
+                                    setActiveFieldId(null);
                                     setEditingFieldId(null);
-                                } 
+                                }
                             }}
                         >
                             {/* Render Fields */}

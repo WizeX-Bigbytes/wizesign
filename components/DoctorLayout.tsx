@@ -2,10 +2,33 @@ import React, { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Zap, User, LogOut, Settings } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
+import { api } from '../services/api';
 
 const DoctorHeader: React.FC = () => {
-    const { resetSession } = useAppStore();
+    const { resetSession, currentUser, setCurrentUser, currentHospital, setCurrentHospital } = useAppStore();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!currentUser) {
+            api.getMe()
+                .then(user => {
+                    console.log("DoctorLayout: user loaded", user);
+                    setCurrentUser(user);
+                })
+                .catch(err => console.error("Failed to load user profile", err));
+        } else {
+            console.log("DoctorLayout: currentUser already set", currentUser);
+        }
+
+        if (!currentHospital) {
+            api.getMyHospital()
+                .then(hospital => {
+                    console.log("DoctorLayout: hospital loaded", hospital);
+                    setCurrentHospital(hospital);
+                })
+                .catch(err => console.error("Failed to load hospital profile", err));
+        }
+    }, [currentUser, setCurrentUser, currentHospital, setCurrentHospital]);
 
     const handleLogout = () => {
         // Clear token and reset session
@@ -32,8 +55,8 @@ const DoctorHeader: React.FC = () => {
                 {/* User Profile Snippet - Hidden on mobile */}
                 <div className="hidden md:flex items-center gap-3 pl-6 border-l border-slate-100">
                     <div className="text-right">
-                        <p className="text-sm font-bold text-slate-900">Dr. Michael Chen</p>
-                        <p className="text-xs text-slate-500">Cardiology</p>
+                        <p className="text-sm font-bold text-slate-900">{currentUser?.name || 'Loading...'}</p>
+                        <p className="text-xs text-slate-500">{currentUser?.specialty || currentUser?.role || 'Medical Professional'}</p>
                     </div>
                     <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600">
                         <User className="w-5 h-5" />

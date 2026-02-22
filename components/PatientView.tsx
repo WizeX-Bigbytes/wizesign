@@ -73,9 +73,13 @@ export const PatientView: React.FC = () => {
         }
     }, [documentData, startWizeChatSession]);
 
-    // IP Simulation (real app would get this from backend/headers)
+    // IP Address handling
     useEffect(() => {
-        setIpAddress(`192.168.1.${Math.floor(Math.random() * 255)}`);
+        // Fetch public IP for audit trail
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => setIpAddress(data.ip))
+            .catch(() => setIpAddress('Unknown'));
     }, []);
 
     const handleSendOtp = async () => {

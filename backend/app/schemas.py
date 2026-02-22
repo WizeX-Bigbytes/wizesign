@@ -144,20 +144,29 @@ class DocumentDetailResponse(BaseModel):
 class TemplateCreate(BaseModel):
     name: str
     file_url: str
+    file_path: Optional[str] = None
+    file_content: Optional[str] = None
     category: Optional[str] = None
+    fields: Optional[List[SmartField]] = None
 
 
 class TemplateUpdate(BaseModel):
     name: Optional[str] = None
+    file_url: Optional[str] = None
+    file_path: Optional[str] = None
+    file_content: Optional[str] = None
     category: Optional[str] = None
+    fields: Optional[List[SmartField]] = None
 
 
 class TemplateResponse(BaseModel):
     id: UUID
     name: str
     file_url: str
+    file_path: Optional[str] = None
     category: Optional[str]
     version: str
+    fields: Optional[List[dict]] = None
     created_at: datetime
 
     class Config:
@@ -177,6 +186,9 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: UUID
+    qualification: Optional[str] = None
+    position: Optional[str] = None
+    specialty: Optional[str] = None
     created_at: datetime
 
     class Config:

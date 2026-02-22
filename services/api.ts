@@ -199,5 +199,16 @@ export const api = {
         body: JSON.stringify(data),
     });
     return handleResponse<any>(response);
+  },
+
+  resolveUrl: (url: string) => {
+    // If the URL is already absolute, return it
+    if (url.startsWith('http')) return url;
+    
+    // If it starts with /api (from the new mapping), use relative to current origin proxy
+    if (url.startsWith('/api')) return url;
+    
+    // Fallback just in case
+    return `${API_BASE_URL}${url}`;
   }
 };

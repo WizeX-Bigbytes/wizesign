@@ -15,7 +15,7 @@ interface AppState {
   setStep: (step: AppStep) => void;
   updatePatientDetails: (details: Partial<PatientDetails>) => void;
   updateConsentForm: (data: Partial<ConsentForm>) => void;
-  setDocumentFile: (url: string, type: string) => void;
+  setDocumentFile: (url: string, type: string, previewUrl?: string) => void;
   
   // Field Logic
   addField: (field: SmartField) => void;
@@ -28,6 +28,27 @@ interface AppState {
   startWizeFlowSession: (patient: PatientDetails) => void;
   startWizeChatSession: (patient: PatientDetails, form: ConsentForm) => void;
   resetSession: () => void;
+  
+  // User Actions
+  setCurrentUser: (user: UserProfile | null) => void;
+  currentUser: UserProfile | null;
+  setCurrentHospital: (hospital: HospitalProfile | null) => void;
+  currentHospital: HospitalProfile | null;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  qualification?: string;
+  position?: string;
+  specialty?: string;
+}
+
+export interface HospitalProfile {
+  id: string;
+  name: string;
 }
 
 const INITIAL_PATIENT: PatientDetails = {
@@ -40,8 +61,8 @@ const INITIAL_PATIENT: PatientDetails = {
 
 const INITIAL_FORM: ConsentForm = {
   procedureName: '',
-  doctorName: 'Dr. Michael Chen',
-  clinicName: 'Wizex Medical Center',
+  doctorName: '',
+  clinicName: '',
   generatedDate: new Date().toLocaleDateString(),
   fields: [],
   auditTrail: []
@@ -49,6 +70,14 @@ const INITIAL_FORM: ConsentForm = {
 
 export const useAppStore = create<AppState>((set) => ({
   currentStep: AppStep.LANDING,
+  
+  // User/Session State
+  // User/Session State
+  currentUser: null,
+  currentHospital: null,
+  setCurrentUser: (user) => set({ currentUser: user }),
+  setCurrentHospital: (hospital) => set({ currentHospital: hospital }),
+
   patientDetails: { ...INITIAL_PATIENT },
   consentForm: { ...INITIAL_FORM },
   activeFieldId: null,
@@ -94,12 +123,13 @@ export const useAppStore = create<AppState>((set) => ({
       };
     }),
 
-  setDocumentFile: (url, type) => 
+  setDocumentFile: (url, type, previewUrl) => 
     set((state) => ({
       consentForm: {
         ...state.consentForm,
         fileUrl: url,
-        fileType: type
+        fileType: type,
+        previewUrl: previewUrl || undefined
       }
     })),
 
@@ -134,11 +164,16 @@ export const useAppStore = create<AppState>((set) => ({
 
   setActiveFieldId: (id) => set({ activeFieldId: id }),
 
-  startWizeFlowSession: (patient) => set({
+  startWizeFlowSession: (patient) => set((state) => ({
     currentStep: AppStep.DOCTOR_DRAFTING,
     patientDetails: patient,
-    consentForm: { ...INITIAL_FORM, transactionId: crypto.randomUUID() }
-  }),
+    consentForm: { 
+        ...INITIAL_FORM, 
+        transactionId: crypto.randomUUID(),
+        doctorName: state.currentUser?.name || INITIAL_FORM.doctorName,
+        clinicName: state.currentHospital?.name || INITIAL_FORM.clinicName
+    }
+  })),
 
   startWizeChatSession: (patient, form) => set({
     currentStep: AppStep.PATIENT_REVIEW,

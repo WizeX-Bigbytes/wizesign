@@ -81,8 +81,10 @@ class Template(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     file_url = Column(Text, nullable=False)
+    file_path = Column(Text, nullable=True)
     category = Column(String, nullable=True)
     version = Column(String, default="1.0")
+    fields = Column(JSON, nullable=True)
     
     # Ownership
     hospital_id = Column(UUID(as_uuid=True), ForeignKey("hospitals.id"), nullable=False, index=True)

@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PenTool } from 'lucide-react';
 import { SmartField } from '../../types';
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
+
+// Configure PDF.js worker
+if (typeof window !== 'undefined') {
+    GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`;
+}
 
 interface DocumentViewerProps {
     fileUrl: string;
@@ -19,6 +25,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
+    const [renderUrl, setRenderUrl] = useState<string>(fileUrl);
     const DOC_WIDTH = 800;
     const DOC_HEIGHT = 1132;
 
@@ -37,6 +44,58 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Effect to render PDF to Image for Background
+    useEffect(() => {
+        let isMounted = true;
+
+        const renderPdfToImage = async () => {
+            // If it's already an image (e.g. data url from backend), just use it
+            if (fileUrl.startsWith('data:image')) {
+                setRenderUrl(fileUrl);
+                return;
+            }
+
+            try {
+                // Fetch the PDF
+                const response = await fetch(fileUrl);
+                if (!response.ok) throw new Error("Failed to fetch document");
+                const arrayBuffer = await response.arrayBuffer();
+
+                // Render using PDF.js
+                const loadingTask = getDocument({ data: arrayBuffer });
+                const pdf = await loadingTask.promise;
+                const page = await pdf.getPage(1);
+
+                const originalViewport = page.getViewport({ scale: 1 });
+                const pdfScale = 1600 / originalViewport.width;
+                const viewport = page.getViewport({ scale: pdfScale });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+
+                if (context) {
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    await page.render({ canvasContext: context, viewport }).promise;
+
+                    if (isMounted) {
+                        setRenderUrl(canvas.toDataURL('image/jpeg', 0.9));
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to render PDF in viewer:", err);
+                // Fallback to original url, might be broken though
+                if (isMounted) setRenderUrl(fileUrl);
+            }
+        };
+
+        if (fileUrl) {
+            renderPdfToImage();
+        }
+
+        return () => { isMounted = false; };
+    }, [fileUrl]);
+
     return (
         <div
             ref={containerRef}
@@ -52,7 +111,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     width: `${DOC_WIDTH}px`,
                     height: `${DOC_HEIGHT}px`,
                     transform: `scale(${scale})`,
-                    backgroundImage: `url(${fileUrl})`,
+                    backgroundImage: `url(${renderUrl})`,
                     backgroundSize: '100% 100%',
                     backgroundRepeat: 'no-repeat',
                     marginTop: '24px' // Fixed top margin

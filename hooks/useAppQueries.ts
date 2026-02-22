@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ConsentForm, PatientDetails, AuditEvent } from '../types';
-import { api } from '../services/api';
+import { api, API_BASE_URL } from '../services/api';
 
 // -- Hooks --
 
@@ -11,7 +11,8 @@ export const useTemplates = () => {
       const templates = await api.fetchTemplates();
       return templates.map((t: any) => ({
         ...t,
-        url: t.file_url // Map backend file_url to frontend url
+        url: `${API_BASE_URL}/templates/${t.id}/download`, // Use the new download endpoint
+        fields: t.fields || []
       }));
     },
   });

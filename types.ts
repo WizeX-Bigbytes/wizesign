@@ -41,6 +41,7 @@ export interface ConsentForm {
   doctorName: string;
   clinicName: string;
   fileUrl?: string; // Blob URL for the uploaded PDF/Image
+  previewUrl?: string; // Data URL for rendering the visual Canvas background
   fileType?: string; // 'application/pdf' or 'image/...'
   notes?: string;
   fields?: SmartField[]; // The draggable fields
