@@ -115,6 +115,16 @@ async def create_template(
     await db.commit()
     await db.refresh(template)
     
+    # Update file_url to point to backend download API if we have a locally saved file
+    if file_path:
+        template.file_url = f"/api/templates/{template.id}/download"
+        await db.commit()
+        await db.refresh(template)
+    elif template_data.file_url and not template_data.file_url.startswith('blob:'):
+        template.file_url = template_data.file_url
+        await db.commit()
+        await db.refresh(template)
+    
     return template
 
 
@@ -234,7 +244,10 @@ async def update_template(
             template.file_path = file_path
             print(f"Successfully saved updated file to: {file_path}")
             
-            if template_data.file_url:
+            # Avoid overwriting a true backend URL with a transient blob URL during front-end updates
+            if file_path:
+                template.file_url = f"/api/templates/{template.id}/download"
+            elif template_data.file_url is not None and not template_data.file_url.startswith('blob:'):
                 template.file_url = template_data.file_url
         except Exception as e:
             print(f"ERROR saving template file content during update: {e}")
@@ -242,8 +255,11 @@ async def update_template(
     elif template_data.file_path is not None:
         template.file_path = template_data.file_path
         
-    if template_data.file_url is not None and not template_data.file_content:
+    if template_data.file_url is not None and not template_data.file_url.startswith('blob:') and not template_data.file_content:
         template.file_url = template_data.file_url
+    elif template_data.file_url is not None and template_data.file_url.startswith('blob:') and not template_data.file_content:
+        # Ignore blob updates if there's no new file content
+        pass
         
     await db.commit()
     await db.refresh(template)

@@ -315,7 +315,7 @@ async def create_document_for_patient(
     document = Document(
         transaction_id=transaction_id,
         procedure_name=document_data.procedure_name,
-        file_url=document_data.file_url,
+        file_url="", # Will update this after getting the ID
         file_path=file_path,  # Store local file path
         doctor_name=document_data.doctor_name,
         clinic_name=document_data.clinic_name,
@@ -338,6 +338,16 @@ async def create_document_for_patient(
     db.add(document)
     await db.commit()
     await db.refresh(document)
+    
+    # Update the file_url to point to the backend route instead of the transient blob
+    if file_path:
+        document.file_url = f"/api/documents/{document.id}/pdf"
+        await db.commit()
+        await db.refresh(document)
+    elif document_data.file_url and not document_data.file_url.startswith('blob:'):
+        document.file_url = document_data.file_url
+        await db.commit()
+        await db.refresh(document)
     
     print(f"\n✅ DOCUMENT CREATED SUCCESSFULLY:")
     print(f"  - Document ID: {document.id}")
@@ -639,6 +649,49 @@ async def download_signed_document(
     filename = f"{document.procedure_name.replace(' ', '_')}_signed_{document.patient.full_name.replace(' ', '_')}.pdf"
     return FileResponse(
         path=str(pdf_path),
+        media_type="application/pdf",
+        filename=filename
+    )
+
+
+@router.get("/{document_id}/pdf")
+async def download_original_document(
+    document_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Download the original unsigned document PDF.
+    This is used for frontend rendering of the PDF via pdf.js
+    """
+    try:
+        doc_uuid = uuid.UUID(document_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid document ID format"
+        )
+        
+    result = await db.execute(
+        select(Document).where(Document.id == doc_uuid)
+    )
+    document = result.scalar_one_or_none()
+    
+    if not document or not document.file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Original document PDF not found"
+        )
+        
+    file_path = Path(document.file_path)
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File no longer exists on server"
+        )
+        
+    filename = f"{document.procedure_name.replace(' ', '_')}_original.pdf"
+    return FileResponse(
+        path=str(file_path),
         media_type="application/pdf",
         filename=filename
     )
