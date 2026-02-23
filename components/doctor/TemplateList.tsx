@@ -18,6 +18,7 @@ interface TemplateListProps {
     onCreate: () => void;
     onRename: (id: string, newName: string) => void;
     onDelete: (id: string) => void;
+    onBulkDelete?: (ids: string[]) => void;
 }
 
 const DocumentPreviewIcon = () => (
@@ -53,11 +54,13 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     onSelect,
     onCreate,
     onRename,
-    onDelete
+    onDelete,
+    onBulkDelete
 }) => {
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [renamingTemplateId, setRenamingTemplateId] = useState<string | null>(null);
     const [renameValue, setRenameValue] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Close menu on click outside
@@ -83,6 +86,37 @@ export const TemplateList: React.FC<TemplateListProps> = ({
         setRenamingTemplateId(null);
     };
 
+    const toggleSelection = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const selectAll = () => {
+        if (templates && selectedIds.size === templates.length) {
+            setSelectedIds(new Set()); // Deselect all
+        } else if (templates) {
+            setSelectedIds(new Set(templates.map(t => t.id))); // Select all
+        }
+    };
+
+    const handleBulkDelete = () => {
+        if (onBulkDelete && selectedIds.size > 0) {
+            // Confirm before bulk delete
+            if (window.confirm(`Are you sure you want to delete ${selectedIds.size} templates?`)) {
+                onBulkDelete(Array.from(selectedIds));
+                setSelectedIds(new Set()); // Clear selection after delete
+            }
+        }
+    };
+
+    const isSelectionMode = selectedIds.size > 0;
+
     return (
         <div className="max-w-6xl mx-auto h-full flex flex-col relative px-4 md:px-6">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 shrink-0 pt-2">
@@ -104,14 +138,66 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                 </div>
             </div>
 
+            {/* Bulk Actions Bar */}
+            {isSelectionMode && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6 flex items-center justify-between shrink-0 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={selectAll}
+                            className="text-sm font-medium text-blue-700 hover:text-blue-900 bg-blue-100/50 hover:bg-blue-200/50 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                            {selectedIds.size === templates?.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                        <span className="text-sm text-blue-800 font-medium bg-white/50 px-2.5 py-1 rounded-md">
+                            {selectedIds.size} selected
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setSelectedIds(new Set())}
+                            className="text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-1.5 hover:bg-slate-200/50 rounded-lg transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleBulkDelete}
+                            className="flex items-center gap-1.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-1.5 rounded-lg transition-colors shadow-sm"
+                        >
+                            <Trash2 className="w-4 h-4" /> Delete Selected
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 overflow-y-auto min-h-0 pb-6 -mx-4 px-4 scroll-smooth">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {templates?.map(t => (
                         <div
                             key={t.id}
-                            className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-blue-200 transition-all duration-300 flex flex-col overflow-hidden h-full relative cursor-pointer ring-0 hover:ring-2 ring-blue-500/10"
-                            onClick={() => { if (!activeMenuId && renamingTemplateId !== t.id) onSelect(t.url, t.name, t.id, t.fields); }}
+                            className={`group bg-white rounded-2xl border ${selectedIds.has(t.id) ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' : 'border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-blue-200 ring-0 hover:ring-2 ring-blue-500/10'} transition-all duration-300 flex flex-col overflow-hidden h-full relative cursor-pointer`}
+                            onClick={() => {
+                                if (isSelectionMode) {
+                                    const newSelected = new Set(selectedIds);
+                                    if (newSelected.has(t.id)) newSelected.delete(t.id);
+                                    else newSelected.add(t.id);
+                                    setSelectedIds(newSelected);
+                                    return;
+                                }
+                                if (!activeMenuId && renamingTemplateId !== t.id) {
+                                    onSelect(t.url, t.name, t.id, t.fields);
+                                }
+                            }}
                         >
+                            {/* Checkbox for selection */}
+                            <div className="absolute top-3 left-3 z-10">
+                                <button
+                                    onClick={(e) => toggleSelection(e, t.id)}
+                                    className={`w-5 h-5 rounded flex items-center justify-center transition-colors border shadow-sm ${selectedIds.has(t.id) ? 'bg-blue-500 border-blue-500 text-white' : 'bg-white border-slate-300 text-transparent hover:border-blue-400 group-hover:border-slate-400'}`}
+                                >
+                                    <Check className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+
                             {/* Preview Area */}
                             <div className="h-48 bg-slate-50/50 border-b border-slate-100 flex items-center justify-center relative overflow-hidden">
                                 <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] opacity-50"></div>

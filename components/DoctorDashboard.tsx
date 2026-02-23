@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { useTemplates, useUpdateTemplate } from '../hooks/useAppQueries';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTemplates, useUpdateTemplate, useDeleteTemplate } from '../hooks/useAppQueries';
 import { api } from '../services/api';
 import { TemplateList } from './doctor/TemplateList';
 import { CreateTemplateModal } from './doctor/CreateTemplateModal';
 import { DocumentsList } from './doctor/DocumentsList';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import { FileText, FolderOpen } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 // Configure PDF.js worker
 if (typeof window !== 'undefined') {
@@ -16,6 +18,7 @@ if (typeof window !== 'undefined') {
 
 export const DoctorDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const {
     setDocumentFile, updateConsentForm, setFields, patientDetails, updatePatientDetails
@@ -92,7 +95,7 @@ export const DoctorDashboard: React.FC = () => {
 
   const { data: templates } = useTemplates();
   const { mutate: updateTemplate } = useUpdateTemplate();
-  // const { mutate: deleteTemplate } = useDeleteTemplate(); // If this exists
+  const { mutate: deleteTemplate } = useDeleteTemplate();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isProcessingPdf, setIsProcessingPdf] = useState(false);
@@ -107,7 +110,10 @@ export const DoctorDashboard: React.FC = () => {
         }
       });
 
-      if (!response.ok) throw new Error("Failed to download template");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.detail || "Failed to download template");
+      }
 
       const blob = await response.blob();
       const arrayBuffer = await blob.arrayBuffer();
@@ -148,18 +154,18 @@ export const DoctorDashboard: React.FC = () => {
           setFields(fields);
         } else {
           setFields([
-            { id: 'title-field', type: 'TEXT', label: 'Form Title', x: 5, y: 5, w: 90, h: 6, value: name.toUpperCase(), fontSize: 24, fontWeight: 'bold', textAlign: 'center' },
-            { id: 'f1', type: 'TEXT', label: 'Patient Name', x: 14, y: 19.5, w: 35, h: 2.5, value: patientDetails.fullName || '', fontSize: 14 },
-            { id: 'f2', type: 'DATE', label: 'Date', x: 75, y: 19.5, w: 15, h: 2.5, value: new Date().toLocaleDateString(), fontSize: 14 },
-            { id: 'f3', type: 'SIGNATURE', label: 'Patient Signature', x: 15, y: 92, w: 40, h: 4 }
+            { id: 'title-field', type: 'TEXT', label: 'Form Title', x: 5, y: 5, w: 90, h: 6, value: name.toUpperCase(), fontSize: 24, fontWeight: 'bold', textAlign: 'center', page: 1 },
+            { id: 'f1', type: 'TEXT', label: 'Patient Name', x: 14, y: 19.5, w: 35, h: 2.5, value: patientDetails.fullName || '', fontSize: 14, page: 1 },
+            { id: 'f2', type: 'DATE', label: 'Date', x: 75, y: 19.5, w: 15, h: 2.5, value: new Date().toLocaleDateString(), fontSize: 14, page: 1 },
+            { id: 'f3', type: 'SIGNATURE', label: 'Patient Signature', x: 15, y: 92, w: 40, h: 4, page: 1 }
           ]);
         }
 
         navigate('/doctor/editor');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Template rendering failed", err);
-      alert("Error loading template document. Please try again.");
+      toast.error(err?.message || "Error loading template document. Please try again.");
     } finally {
       setIsProcessingPdf(false);
     }
@@ -207,7 +213,8 @@ export const DoctorDashboard: React.FC = () => {
             value: nameToUse.toUpperCase(),
             fontSize: 24,
             fontWeight: 'bold',
-            textAlign: 'center'
+            textAlign: 'center',
+            page: 1
           },
           {
             id: 'auto-date',
@@ -215,16 +222,17 @@ export const DoctorDashboard: React.FC = () => {
             label: 'Date',
             x: 75, y: 19.5, w: 15, h: 2.5,
             value: new Date().toLocaleDateString(),
-            fontSize: 14
+            fontSize: 14,
+            page: 1
           }
         ]);
 
         setShowCreateModal(false);
         navigate('/doctor/editor');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error processing PDF. Please try a different file.");
+      toast.error("Error processing PDF. Please try a different file.");
     } finally {
       setIsProcessingPdf(false);
     }
@@ -307,7 +315,21 @@ export const DoctorDashboard: React.FC = () => {
               onSelect={handleTemplateSelect}
               onCreate={() => setShowCreateModal(true)}
               onRename={(id, newName) => updateTemplate({ id, name: newName })}
-              onDelete={(id) => console.log("Delete not implemented in hook yet", id)}
+              onDelete={(id) => deleteTemplate(id)}
+              onBulkDelete={async (ids) => {
+                try {
+                  // Execute sequentially to avoid overwhelming the network or use Promise.all
+                  const promises = ids.map(id => api.deleteTemplate(id));
+                  await Promise.all(promises);
+                  toast.success(`Successfully deleted ${ids.length} templates`);
+                  // We need to invalidate the query manually since we aren't using the hook here
+                  // But the easiest way is to trigger a refetch or reload if we don't have queryClient
+                  window.location.reload();
+                } catch (error) {
+                  console.error("Bulk delete failed:", error);
+                  toast.error("Some templates failed to delete. Please try again.");
+                }
+              }}
             />
             <CreateTemplateModal
               isOpen={showCreateModal}

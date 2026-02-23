@@ -38,8 +38,8 @@ export const api = {
     return handleResponse<any>(response);
   },
 
-  submitSignature: async (documentId: string, data: { signature: string, ip_address?: string, audit_events?: any[] }) => {
-    const response = await fetch(`${API_BASE_URL}/documents/${documentId}/sign`, {
+  submitSignature: async (documentId: string, data: { signature: string, ip_address?: string, audit_events?: any[] }, token: string) => {
+    const response = await fetch(`${API_BASE_URL}/documents/${documentId}/sign?token=${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -99,7 +99,7 @@ export const api = {
 
   // Templates
   fetchTemplates: async () => {
-    const response = await fetch(`${API_BASE_URL}/templates/`);
+    const response = await fetch(`${API_BASE_URL}/templates/`, { headers: getAuthHeaders() });
     return handleResponse<any[]>(response);
   },
   
@@ -109,7 +109,7 @@ export const api = {
       const { id, is_update, ...updateData } = data;
       const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(updateData),
       });
       return handleResponse<any>(response);
@@ -118,7 +118,7 @@ export const api = {
     // Otherwise create new template
     const response = await fetch(`${API_BASE_URL}/templates/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(data),
     });
     return handleResponse<any>(response);
@@ -195,10 +195,22 @@ export const api = {
   updateTemplate: async (id: string, data: any) => {
      const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(data),
     });
     return handleResponse<any>(response);
+  },
+
+  deleteTemplate: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    if (!response.ok && response.status !== 204) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(errorData.detail || 'Failed to delete template');
+    }
+    return true;
   },
 
   resolveUrl: (url: string) => {

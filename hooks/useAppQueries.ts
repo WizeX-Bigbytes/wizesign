@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ConsentForm, PatientDetails, AuditEvent } from '../types';
 import { api, API_BASE_URL } from '../services/api';
+import toast from 'react-hot-toast';
 
 // -- Hooks --
 
@@ -34,6 +35,20 @@ export const useUpdateTemplate = () => {
     mutationFn: (data: { id: string, name: string }) => api.updateTemplate(data.id, { name: data.name }),
     onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['templates'] });
+    }
+  });
+};
+
+export const useDeleteTemplate = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteTemplate(id),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['templates'] });
+        toast.success("Template deleted successfully");
+    },
+    onError: () => {
+        toast.error("Failed to delete template");
     }
   });
 };
@@ -74,17 +89,20 @@ export const useSubmitSignature = () => {
   return useMutation({
     mutationFn: async (data: { 
       formId: string, 
+      token: string,
       signature: string, 
       auditEvents: AuditEvent[] 
     }) => {
        const response = await api.submitSignature(data.formId, {
            signature: data.signature,
            audit_events: data.auditEvents
-       });
+       }, data.token);
        return {
            success: true,
            signedDate: response.signed_date,
-           finalHash: response.transaction_id // Using transaction ID as hash proxy
+           finalHash: response.transaction_id, // Using transaction ID as hash proxy
+           certificate_hash: response.certificate_hash,
+           certificate_issued_at: response.certificate_issued_at
        };
     },
   });

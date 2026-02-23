@@ -8,7 +8,7 @@ import { EditorHeader } from './doctor/EditorHeader';
 import { EditorSidebar } from './doctor/EditorSidebar';
 import { SmartField, AppStep } from '../types';
 import { SendConfirmationModal } from './doctor/SendConfirmationModal';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 export const DoctorEditor: React.FC = () => {
     const navigate = useNavigate();
@@ -286,9 +286,9 @@ export const DoctorEditor: React.FC = () => {
                     console.log("Frontend template update succcessful!");
                     toast.success('Template updated successfully!');
                 },
-                onError: (error) => {
+                onError: (error: any) => {
                     console.error("Template update failed:", error);
-                    toast.error("Template update failed");
+                    toast.error(error?.message || "Template update failed");
                 }
             });
         } else {
@@ -304,9 +304,9 @@ export const DoctorEditor: React.FC = () => {
                     console.log("Frontend template creation succcessful!");
                     toast.success('Template saved successfully!');
                 },
-                onError: (error) => {
+                onError: (error: any) => {
                     console.error("Template creation failed:", error);
-                    toast.error("Template creation failed");
+                    toast.error(error?.message || "Template creation failed");
                 }
             });
         }

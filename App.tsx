@@ -10,6 +10,7 @@ import { LoginPage } from './components/LoginPage';
 import { SSOHandler } from './components/SSOHandler';
 import { SettingsPage } from './components/SettingsPage';
 import { DocumentDetailView } from './components/DocumentDetailView';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -23,7 +24,11 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<LoginPage />} />
 
-          <Route path="/doctor" element={<DoctorLayout />}>
+          <Route path="/doctor" element={
+            <ProtectedRoute>
+              <DoctorLayout />
+            </ProtectedRoute>
+          }>
             <Route path="dashboard" element={<DoctorDashboard />} />
             <Route path="editor" element={<DoctorEditor />} />
             <Route path="settings" element={<SettingsPage />} />

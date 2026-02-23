@@ -11,7 +11,7 @@ import { PatientHeader } from './patient/PatientHeader';
 import { DocumentViewer } from './patient/DocumentViewer';
 import { StickyFooter } from './patient/StickyFooter';
 
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 export const PatientView: React.FC = () => {
     const navigate = useNavigate();
@@ -67,8 +67,9 @@ export const PatientView: React.FC = () => {
             );
 
             // If already viewed/signed, handle accordingly (optional logic)
-            if (documentData.status !== 'SENT' && documentData.status !== 'VIEWED') {
-                // Maybe redirect or show status
+            if (documentData.status === 'SIGNED' || documentData.status === 'COMPLETED') {
+                toast.success("This document has already been signed.");
+                navigate('/completed');
             }
         }
     }, [documentData, startWizeChatSession]);
@@ -101,7 +102,7 @@ export const PatientView: React.FC = () => {
 
             // Auto-fill OTP for testing if provided (Dev Mode)
             if (data.dev_otp) {
-                toast.info(`🔐 DEV MODE: OTP is ${data.dev_otp}`);
+                toast.success(`🔐 DEV MODE: OTP is ${data.dev_otp}`, { icon: 'ℹ️' });
                 console.log('Auto-filling OTP:', data.dev_otp);
 
                 // Small delay to allow UI transition
@@ -169,6 +170,7 @@ export const PatientView: React.FC = () => {
         // Backend submission
         submit({
             formId: consentForm.transactionId!, // This is actually the document ID from API
+            token: token!,
             signature,
             auditEvents: newAuditEvents
         }, {

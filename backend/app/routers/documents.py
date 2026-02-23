@@ -23,6 +23,7 @@ from app.services.wizechat import wizechat_service
 from app.services.pdf_generator import pdf_generator_service
 from app.schemas_wizechat import SendDocumentLinkRequest, WhatsAppResponse
 from fastapi.responses import FileResponse
+from app.routers.auth import get_current_user_from_token
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -31,39 +32,9 @@ UPLOAD_DIR = Path("/app/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
-async def get_current_user_from_token(authorization: str = Header(None), db: AsyncSession = Depends(get_db)):
-    """Extract user from JWT token - returns first available user if no token for demo"""
-    
-    # If no authorization header, use first doctor user for demo
-    if not authorization:
-        result = await db.execute(select(User).where(User.role == RoleEnum.DOCTOR).limit(1))
-        demo_user = result.scalar_one_or_none()
-        if demo_user:
-            return demo_user
-        raise HTTPException(status_code=401, detail="No users available - please run SSO login first")
-    
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    
-    token = authorization.replace("Bearer ", "")
-    
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id = payload.get("sub")
-        hospital_id = payload.get("hospital_id")
-        
-        if not user_id or not hospital_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        
-        return user
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
+# 
+# Auth dependency is imported from app.routers.auth
+# 
 
 
 @router.post("/upload-file")
@@ -76,6 +47,9 @@ async def upload_document_file(
     Upload a PDF or image file for a document template.
     Returns the stored file path.
     """
+    if file.size and file.size > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 25MB.")
+        
     # Validate file type
     allowed_types = ["application/pdf", "image/jpeg", "image/png", "image/jpg"]
     if file.content_type not in allowed_types:
@@ -431,7 +405,7 @@ async def get_document_by_token(
         }
         
         if document.audit_trail:
-            document.audit_trail.append(audit_event)
+            document.audit_trail = [*document.audit_trail, audit_event]
         else:
             document.audit_trail = [audit_event]
         
@@ -448,6 +422,7 @@ async def get_document_by_token(
 @router.post("/{document_id}/sign", response_model=DocumentDetailResponse)
 async def submit_signature(
     document_id: str,
+    token: str,
     signature_data: SignatureSubmit,
     request: Request,
     db: AsyncSession = Depends(get_db)
@@ -475,6 +450,19 @@ async def submit_signature(
             detail="Document not found"
         )
     
+    try:
+        token_uuid = uuid.UUID(token)
+        if document.secure_token != token_uuid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid secure token"
+            )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid secure token format"
+        )
+        
     if document.status == DocumentStatusEnum.EXPIRED:
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
@@ -507,14 +495,14 @@ async def submit_signature(
         "details": f"SHA-256 certificate issued: {document.certificate_hash[:16]}..."
     }
     if document.audit_trail:
-        document.audit_trail.append(cert_audit)
+        document.audit_trail = [*document.audit_trail, cert_audit]
     else:
         document.audit_trail = [cert_audit]
     
     # Add audit events
     if signature_data.audit_events:
         if document.audit_trail:
-            document.audit_trail.extend(signature_data.audit_events)
+            document.audit_trail = [*document.audit_trail, *signature_data.audit_events]
         else:
             document.audit_trail = signature_data.audit_events
     
@@ -544,7 +532,7 @@ async def submit_signature(
             "details": f"Signed PDF generated: {signed_pdf_path}"
         }
         if document.audit_trail:
-            document.audit_trail.append(pdf_audit)
+            document.audit_trail = [*document.audit_trail, pdf_audit]
         else:
             document.audit_trail = [pdf_audit]
     except Exception as e:
@@ -590,7 +578,7 @@ async def submit_signature(
                         "details": f"Signed document notification sent to {document.patient.phone} via WizeChat (Certificate: {document.certificate_hash[:16]}...)"
                     }
                     if document.audit_trail:
-                        document.audit_trail.append(wizechat_audit)
+                        document.audit_trail = [*document.audit_trail, wizechat_audit]
                     else:
                         document.audit_trail = [wizechat_audit]
                     

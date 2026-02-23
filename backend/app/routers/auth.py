@@ -57,6 +57,33 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     return user
 
 
+async def get_current_user_from_token(authorization: str = Header(None), db: AsyncSession = Depends(get_db)):
+    """Extract user from JWT token - no fallback for production security"""
+    
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing authorization header")
+    
+    token = authorization.replace("Bearer ", "")
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = payload.get("sub")
+        hospital_id = payload.get("hospital_id")
+        
+        if not user_id or not hospital_id:
+            raise HTTPException(status_code=401, detail="Invalid token structure")
+        
+        result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+
 @router.post("/login", response_model=Token)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -331,7 +358,14 @@ async def generate_test_token(
     """
     Generate a valid signed SSO token for testing.
     Mocks the behavior of WizeFlow generating a token.
+    Throws a 403 Forbidden in production environments.
     """
+    if settings.APP_ENV != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Test tokens can only be generated in development mode"
+        )
+        
     if not mock_data:
         # Default Mock Data (Dr. Sarah)
         mock_data = {
