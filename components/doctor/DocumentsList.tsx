@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Eye, Clock, CheckCircle, Send, AlertCircle, Search, Filter } from 'lucide-react';
+import { formatDisplayDate } from '../../utils/dateUtils';
 
 interface Document {
     id: string;
@@ -19,15 +20,17 @@ interface DocumentsListProps {
     documents: Document[];
     onViewDocument: (documentId: string) => void;
     isLoading?: boolean;
+    initialSearchQuery?: string;
 }
 
-export const DocumentsList: React.FC<DocumentsListProps> = ({ 
-    documents, 
+export const DocumentsList: React.FC<DocumentsListProps> = ({
+    documents,
     onViewDocument,
-    isLoading 
+    isLoading,
+    initialSearchQuery
 }) => {
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -63,7 +66,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
 
     const filteredDocuments = documents.filter(doc => {
         const matchesStatus = statusFilter === 'ALL' || doc.status === statusFilter;
-        const matchesSearch = 
+        const matchesSearch =
             doc.procedure_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             doc.patient.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (doc.patient.email && doc.patient.email.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -85,16 +88,16 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Sent Documents</h1>
                     <p className="text-slate-500 text-sm mt-1">Track status and view signed consent forms</p>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="relative w-full md:w-auto group">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                        <input 
-                            type="text" 
-                            placeholder="Search patient or document..." 
+                        <input
+                            type="text"
+                            placeholder="Search patient or document..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full md:w-64 pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white shadow-sm transition-all" 
+                            className="w-full md:w-64 pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white shadow-sm transition-all"
                         />
                     </div>
                 </div>
@@ -106,20 +109,18 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                     <button
                         key={status}
                         onClick={() => setStatusFilter(status)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${
-                            statusFilter === status
-                                ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10'
-                                : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-                        }`}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${statusFilter === status
+                            ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10'
+                            : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                            }`}
                     >
                         {status === 'ALL' && <Filter className="w-3.5 h-3.5" />}
                         {status === 'SENT' && <Send className="w-3.5 h-3.5" />}
                         {status === 'VIEWED' && <Eye className="w-3.5 h-3.5" />}
                         {status === 'SIGNED' && <CheckCircle className="w-3.5 h-3.5" />}
-                        {status} 
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                             statusFilter === status ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                        }`}>
+                        {status}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusFilter === status ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                            }`}>
                             {statusCounts[status]}
                         </span>
                     </button>
@@ -142,7 +143,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                         </div>
                         <h3 className="text-slate-900 font-bold text-lg mb-1">No documents found</h3>
                         <p className="text-slate-500 text-sm">
-                            {searchQuery 
+                            {searchQuery
                                 ? `No results matching "${searchQuery}"`
                                 : statusFilter === 'ALL'
                                     ? "You haven't sent any documents yet."
@@ -150,7 +151,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                             }
                         </p>
                         {statusFilter !== 'ALL' && !searchQuery && (
-                             <button 
+                            <button
                                 onClick={() => setStatusFilter('ALL')}
                                 className="mt-4 text-blue-600 text-sm font-bold hover:underline"
                             >
@@ -169,11 +170,10 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                                 className="group bg-white rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-900/5 transition-all p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
                             >
                                 <div className="flex items-start gap-4 min-w-0">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                                        doc.status === 'SIGNED' || doc.status === 'COMPLETED' ? 'bg-green-50 text-green-600' :
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${doc.status === 'SIGNED' || doc.status === 'COMPLETED' ? 'bg-green-50 text-green-600' :
                                         doc.status === 'VIEWED' ? 'bg-blue-50 text-blue-600' :
-                                        'bg-yellow-50 text-yellow-600'
-                                    }`}>
+                                            'bg-yellow-50 text-yellow-600'
+                                        }`}>
                                         {getStatusIcon(doc.status)}
                                     </div>
                                     <div className="min-w-0">
@@ -187,10 +187,10 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                                                 </div>
                                                 <span className="font-medium">{doc.patient.full_name}</span>
                                             </div>
-                                            
+
                                             <div className="flex items-center gap-1.5 text-slate-400 text-xs">
                                                 <Clock className="w-3 h-3" />
-                                                <span>{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                <span>{formatDisplayDate(doc.created_at)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -200,7 +200,7 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                                     <div className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(doc.status)}`}>
                                         <span>{doc.status}</span>
                                     </div>
-                                    
+
                                     <button
                                         onClick={() => onViewDocument(doc.id)}
                                         className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-blue-300 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-bold transition-all whitespace-nowrap"

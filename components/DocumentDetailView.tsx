@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { ArrowLeft, FileText, User, Calendar, Clock, CheckCircle, Mail, Phone, Download } from 'lucide-react';
+import { formatDisplayDate, formatDisplayDateTime } from '../utils/dateUtils';
 
 export const DocumentDetailView: React.FC = () => {
     const { documentId } = useParams<{ documentId: string }>();
@@ -16,7 +17,7 @@ export const DocumentDetailView: React.FC = () => {
 
     const loadDocument = async () => {
         if (!documentId) return;
-        
+
         setIsLoading(true);
         try {
             const doc = await api.getDocument(documentId);
@@ -95,12 +96,12 @@ export const DocumentDetailView: React.FC = () => {
                                 <div className="flex flex-wrap gap-4 text-blue-100 text-sm">
                                     <div className="flex items-center gap-1">
                                         <Calendar className="w-4 h-4" />
-                                        <span>Sent: {new Date(document.created_at).toLocaleString()}</span>
+                                        <span>Sent: {formatDisplayDateTime(document.created_at)}</span>
                                     </div>
                                     {document.signed_date && (
                                         <div className="flex items-center gap-1">
                                             <CheckCircle className="w-4 h-4" />
-                                            <span>Signed: {new Date(document.signed_date).toLocaleString()}</span>
+                                            <span>Signed: {formatDisplayDateTime(document.signed_date)}</span>
                                         </div>
                                     )}
                                 </div>
@@ -172,7 +173,7 @@ export const DocumentDetailView: React.FC = () => {
                                         {document.link_accessed ? (
                                             <span className="text-green-600 flex items-center gap-1">
                                                 <CheckCircle className="w-4 h-4" />
-                                                Yes - {document.link_accessed_at ? new Date(document.link_accessed_at).toLocaleString() : ''}
+                                                Yes - {document.link_accessed_at ? formatDisplayDateTime(document.link_accessed_at) : ''}
                                             </span>
                                         ) : (
                                             <span className="text-slate-400">Not yet</span>
@@ -190,14 +191,14 @@ export const DocumentDetailView: React.FC = () => {
                                     Patient Signature
                                 </h2>
                                 <div className="bg-slate-50 rounded-xl p-6 border-2 border-green-200">
-                                    <img 
-                                        src={document.signature} 
-                                        alt="Patient Signature" 
+                                    <img
+                                        src={document.signature}
+                                        alt="Patient Signature"
                                         className="max-w-md mx-auto bg-white border-2 border-slate-200 rounded-lg p-4"
                                     />
                                     {document.signed_date && (
                                         <div className="text-center mt-4 text-sm text-slate-600">
-                                            Signed on {new Date(document.signed_date).toLocaleString()}
+                                            Signed on {formatDisplayDateTime(document.signed_date)}
                                         </div>
                                     )}
                                 </div>
@@ -228,7 +229,7 @@ export const DocumentDetailView: React.FC = () => {
                                             <div>
                                                 <div className="text-xs text-slate-500 mb-1">Issued On</div>
                                                 <div className="font-semibold text-slate-900 text-sm">
-                                                    {document.certificate_issued_at 
+                                                    {document.certificate_issued_at
                                                         ? new Date(document.certificate_issued_at).toLocaleString()
                                                         : 'N/A'}
                                                 </div>
@@ -249,134 +250,138 @@ export const DocumentDetailView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Document Preview */}
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-900 mb-4">Document Preview</h2>
-                            <div className="bg-slate-50 rounded-xl p-6">
-                                {document.file_url ? (
-                                    <div className="space-y-4">
-                                        <div className="relative w-full bg-white rounded-lg shadow-lg overflow-hidden">
-                                            <img 
-                                                src={document.file_url} 
-                                                alt="Document" 
-                                                className="w-full"
-                                            />
-                                            {/* Render fields on top of the document */}
-                                            {document.fields && document.fields.length > 0 && (
-                                                <div className="absolute inset-0 pointer-events-none">
-                                                    {document.fields.map((field: any) => {
-                                                        if (!field.value && field.type !== 'SIGNATURE') return null;
-                                                        
-                                                        return (
-                                                            <div
-                                                                key={field.id}
-                                                                style={{
-                                                                    position: 'absolute',
-                                                                    left: `${field.x}%`,
-                                                                    top: `${field.y}%`,
-                                                                    width: `${field.w}%`,
-                                                                    height: `${field.h}%`,
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: field.textAlign || 'left',
-                                                                    padding: '4px',
-                                                                }}
-                                                            >
-                                                                {field.type === 'SIGNATURE' && document.signature ? (
-                                                                    <img 
-                                                                        src={document.signature} 
-                                                                        alt="Signature" 
-                                                                        style={{
-                                                                            width: '100%',
-                                                                            height: '100%',
-                                                                            objectFit: 'contain'
-                                                                        }}
-                                                                    />
-                                                                ) : (
-                                                                    <div
-                                                                        style={{
-                                                                            fontSize: field.fontSize ? `${field.fontSize}px` : '14px',
-                                                                            fontWeight: field.fontWeight || 'normal',
-                                                                            color: '#1e293b',
-                                                                            width: '100%',
-                                                                            textAlign: field.textAlign || 'left',
-                                                                            wordWrap: 'break-word',
-                                                                        }}
-                                                                    >
-                                                                        {field.value}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
+                        {/* Document Preview - Hidden for signed/completed docs */}
+                        {document.status !== 'SIGNED' && document.status !== 'COMPLETED' && (
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 mb-4">Document Preview</h2>
+                                <div className="bg-slate-50 rounded-xl p-6">
+                                    {document.file_url ? (
+                                        <div className="space-y-4">
+                                            <div className="relative w-full bg-white rounded-lg shadow-lg overflow-hidden">
+                                                <img
+                                                    src={document.file_url}
+                                                    alt="Document"
+                                                    className="w-full"
+                                                />
+                                                {/* Render fields on top of the document */}
+                                                {document.fields && document.fields.length > 0 && (
+                                                    <div className="absolute inset-0 pointer-events-none">
+                                                        {document.fields.map((field: any) => {
+                                                            if (!field.value && field.type !== 'SIGNATURE') return null;
+
+                                                            return (
+                                                                <div
+                                                                    key={field.id}
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        left: `${field.x}%`,
+                                                                        top: `${field.y}%`,
+                                                                        width: `${field.w}%`,
+                                                                        height: `${field.h}%`,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: field.textAlign || 'left',
+                                                                        padding: '4px',
+                                                                    }}
+                                                                >
+                                                                    {field.type === 'SIGNATURE' && document.signature ? (
+                                                                        <img
+                                                                            src={document.signature}
+                                                                            alt="Signature"
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                height: '100%',
+                                                                                objectFit: 'contain'
+                                                                            }}
+                                                                        />
+                                                                    ) : (
+                                                                        <div
+                                                                            style={{
+                                                                                fontSize: field.fontSize ? `${field.fontSize}px` : '14px',
+                                                                                fontWeight: field.fontWeight || 'normal',
+                                                                                color: '#1e293b',
+                                                                                width: '100%',
+                                                                                textAlign: field.textAlign || 'left',
+                                                                                wordWrap: 'break-word',
+                                                                            }}
+                                                                        >
+                                                                            {field.value}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex justify-center">
+                                                <a
+                                                    href={document.file_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                    Download Document
+                                                </a>
+                                            </div>
                                         </div>
-                                        <div className="flex justify-center">
-                                            <a 
-                                                href={document.file_url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                            >
-                                                <Download className="w-4 h-4" />
-                                                Download Document
-                                            </a>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="bg-white rounded-xl border-2 border-dashed border-slate-300 p-12">
-                                        <div className="text-center space-y-3">
-                                            <FileText className="w-16 h-16 text-slate-300 mx-auto" />
-                                            <div className="text-slate-900 font-bold text-lg">Document Summary</div>
-                                            <div className="text-slate-600 space-y-2 max-w-md mx-auto">
-                                                <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
-                                                    <span className="text-slate-500">Procedure:</span>
-                                                    <span className="font-semibold">{document.procedure_name}</span>
-                                                </div>
-                                                <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
-                                                    <span className="text-slate-500">Status:</span>
-                                                    <span className="font-semibold capitalize">{document.status}</span>
-                                                </div>
-                                                <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
-                                                    <span className="text-slate-500">Patient:</span>
-                                                    <span className="font-semibold">{document.patient.full_name}</span>
-                                                </div>
-                                                <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
-                                                    <span className="text-slate-500">Created:</span>
-                                                    <span className="font-semibold">{new Date(document.created_at).toLocaleDateString()}</span>
+                                    ) : (
+                                        <div className="bg-white rounded-xl border-2 border-dashed border-slate-300 p-12">
+                                            <div className="text-center space-y-3">
+                                                <FileText className="w-16 h-16 text-slate-300 mx-auto" />
+                                                <div className="text-slate-900 font-bold text-lg">Document Summary</div>
+                                                <div className="text-slate-600 space-y-2 max-w-md mx-auto">
+                                                    <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
+                                                        <span className="text-slate-500">Procedure:</span>
+                                                        <span className="font-semibold">{document.procedure_name}</span>
+                                                    </div>
+                                                    <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
+                                                        <span className="text-slate-500">Status:</span>
+                                                        <span className="font-semibold capitalize">{document.status}</span>
+                                                    </div>
+                                                    <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
+                                                        <span className="text-slate-500">Patient:</span>
+                                                        <span className="font-semibold">{document.patient.full_name}</span>
+                                                    </div>
+                                                    <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
+                                                        <span className="text-slate-500">Created:</span>
+                                                        <span className="font-semibold">{formatDisplayDate(document.created_at)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Patient Link - Hidden for signed/completed docs */}
+                        {document.status !== 'SIGNED' && document.status !== 'COMPLETED' && (
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                                <div className="text-sm font-bold text-blue-900 mb-2">Patient Link</div>
+                                {document.patient_link ? (
+                                    <div className="space-y-2">
+                                        <div className="bg-white rounded-lg p-3 font-mono text-xs text-slate-600 break-all">
+                                            {document.patient_link}
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(document.patient_link);
+                                                alert('Link copied to clipboard!');
+                                            }}
+                                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                        >
+                                            📋 Copy Link
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white rounded-lg p-3 text-sm text-slate-500 text-center">
+                                        No patient link generated yet
                                     </div>
                                 )}
                             </div>
-                        </div>
-
-                        {/* Patient Link */}
-                        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-                            <div className="text-sm font-bold text-blue-900 mb-2">Patient Link</div>
-                            {document.patient_link ? (
-                                <div className="space-y-2">
-                                    <div className="bg-white rounded-lg p-3 font-mono text-xs text-slate-600 break-all">
-                                        {document.patient_link}
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(document.patient_link);
-                                            alert('Link copied to clipboard!');
-                                        }}
-                                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                                    >
-                                        📋 Copy Link
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="bg-white rounded-lg p-3 text-sm text-slate-500 text-center">
-                                    No patient link generated yet
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>

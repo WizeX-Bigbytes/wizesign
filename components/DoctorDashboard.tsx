@@ -10,6 +10,7 @@ import { DocumentsList } from './doctor/DocumentsList';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 import { FileText, FolderOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 // Configure PDF.js worker
 if (typeof window !== 'undefined') {
@@ -25,6 +26,7 @@ export const DoctorDashboard: React.FC = () => {
   } = useAppStore();
 
   const [viewMode, setViewMode] = useState<'templates' | 'documents'>('templates');
+  const [activeTemplateFilter, setActiveTemplateFilter] = useState<string>('');
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   const [wizechatStatus, setWizechatStatus] = useState<any>(null);
@@ -156,7 +158,7 @@ export const DoctorDashboard: React.FC = () => {
           setFields([
             { id: 'title-field', type: 'TEXT', label: 'Form Title', x: 5, y: 5, w: 90, h: 6, value: name.toUpperCase(), fontSize: 24, fontWeight: 'bold', textAlign: 'center', page: 1 },
             { id: 'f1', type: 'TEXT', label: 'Patient Name', x: 14, y: 19.5, w: 35, h: 2.5, value: patientDetails.fullName || '', fontSize: 14, page: 1 },
-            { id: 'f2', type: 'DATE', label: 'Date', x: 75, y: 19.5, w: 15, h: 2.5, value: new Date().toLocaleDateString(), fontSize: 14, page: 1 },
+            { id: 'f2', type: 'DATE', label: 'Date', x: 75, y: 19.5, w: 15, h: 2.5, value: formatDisplayDate(new Date()), fontSize: 14, page: 1 },
             { id: 'f3', type: 'SIGNATURE', label: 'Patient Signature', x: 15, y: 92, w: 40, h: 4, page: 1 }
           ]);
         }
@@ -221,7 +223,7 @@ export const DoctorDashboard: React.FC = () => {
             type: 'DATE',
             label: 'Date',
             x: 75, y: 19.5, w: 15, h: 2.5,
-            value: new Date().toLocaleDateString(),
+            value: formatDisplayDate(new Date()),
             fontSize: 14,
             page: 1
           }
@@ -291,7 +293,10 @@ export const DoctorDashboard: React.FC = () => {
             Templates
           </button>
           <button
-            onClick={() => setViewMode('documents')}
+            onClick={() => {
+              setViewMode('documents');
+              setActiveTemplateFilter('');
+            }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'documents'
               ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
               : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
@@ -322,13 +327,15 @@ export const DoctorDashboard: React.FC = () => {
                   const promises = ids.map(id => api.deleteTemplate(id));
                   await Promise.all(promises);
                   toast.success(`Successfully deleted ${ids.length} templates`);
-                  // We need to invalidate the query manually since we aren't using the hook here
-                  // But the easiest way is to trigger a refetch or reload if we don't have queryClient
-                  window.location.reload();
+                  queryClient.invalidateQueries({ queryKey: ['templates'] });
                 } catch (error) {
                   console.error("Bulk delete failed:", error);
                   toast.error("Some templates failed to delete. Please try again.");
                 }
+              }}
+              onViewDocuments={(name) => {
+                setActiveTemplateFilter(name);
+                setViewMode('documents');
               }}
             />
             <CreateTemplateModal
@@ -343,6 +350,7 @@ export const DoctorDashboard: React.FC = () => {
             documents={documents}
             onViewDocument={handleViewDocument}
             isLoading={isLoadingDocuments}
+            initialSearchQuery={activeTemplateFilter}
           />
         )}
       </div>

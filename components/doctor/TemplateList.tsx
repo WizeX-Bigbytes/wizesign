@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     FileText, Plus, Search, MoreHorizontal, Clock, Edit2, Trash2, Check
 } from 'lucide-react';
+import { formatDisplayDate } from '../../utils/dateUtils';
 
 interface Template {
     id: string;
@@ -19,6 +20,7 @@ interface TemplateListProps {
     onRename: (id: string, newName: string) => void;
     onDelete: (id: string) => void;
     onBulkDelete?: (ids: string[]) => void;
+    onViewDocuments?: (templateName: string) => void;
 }
 
 const DocumentPreviewIcon = () => (
@@ -55,7 +57,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     onCreate,
     onRename,
     onDelete,
-    onBulkDelete
+    onBulkDelete,
+    onViewDocuments
 }) => {
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [renamingTemplateId, setRenamingTemplateId] = useState<string | null>(null);
@@ -174,7 +177,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                     {templates?.map(t => (
                         <div
                             key={t.id}
-                            className={`group bg-white rounded-2xl border ${selectedIds.has(t.id) ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' : 'border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-blue-200 ring-0 hover:ring-2 ring-blue-500/10'} transition-all duration-300 flex flex-col overflow-hidden h-full relative cursor-pointer`}
+                            className={`group bg-white rounded-2xl border ${selectedIds.has(t.id) ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' : 'border-slate-200 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 hover:border-blue-200 ring-0 hover:ring-2 ring-blue-500/10'} transition-all duration-300 flex flex-col h-full relative cursor-pointer`}
                             onClick={() => {
                                 if (isSelectionMode) {
                                     const newSelected = new Set(selectedIds);
@@ -199,7 +202,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                             </div>
 
                             {/* Preview Area */}
-                            <div className="h-48 bg-slate-50/50 border-b border-slate-100 flex items-center justify-center relative overflow-hidden">
+                            <div className="h-48 bg-slate-50/50 border-b border-slate-100 flex items-center justify-center relative overflow-hidden rounded-t-2xl">
                                 <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] opacity-50"></div>
                                 <DocumentPreviewIcon />
                             </div>
@@ -218,7 +221,7 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                                         )}
                                         <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                                             <Clock className="w-3 h-3" />
-                                            {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : 'Recently'}
+                                            {t.updatedAt ? formatDisplayDate(t.updatedAt) : 'Recently'}
                                         </p>
                                     </div>
                                     <div className="relative" ref={activeMenuId === t.id ? menuRef : null}>
@@ -226,9 +229,19 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                                             <MoreHorizontal className="w-5 h-5" />
                                         </button>
                                         {activeMenuId === t.id && (
-                                            <div className="absolute right-0 top-full mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-50 animate-in zoom-in-95 duration-100 origin-top-right">
+                                            <div className="absolute right-0 top-full mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-[100] animate-in zoom-in-95 duration-100 origin-top-right">
                                                 <button onClick={(e) => startRenaming(e, t.id, t.name)} className="w-full text-left px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2 font-medium">
                                                     <Edit2 className="w-3.5 h-3.5" /> Rename
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveMenuId(null);
+                                                        if (onViewDocuments) onViewDocuments(t.name);
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2 font-medium"
+                                                >
+                                                    <FileText className="w-3.5 h-3.5" /> View Documents
                                                 </button>
                                                 <div className="my-1 border-b border-slate-50"></div>
                                                 <button onClick={(e) => { e.stopPropagation(); onDelete(t.id); }} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium">

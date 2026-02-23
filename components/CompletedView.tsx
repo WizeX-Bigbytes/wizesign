@@ -25,7 +25,7 @@ export const CompletedView: React.FC = () => {
         try {
             // Fetch the PDF blob
             const blob = await api.downloadSignedDocument(consentForm.transactionId);
-            
+
             // Create download link
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -35,7 +35,7 @@ export const CompletedView: React.FC = () => {
             link.click();
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            
+
             toast.success('Document downloaded successfully!');
         } catch (error) {
             console.error('Download error:', error);
@@ -92,7 +92,7 @@ export const CompletedView: React.FC = () => {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm border-b border-slate-100 pb-8">
                                 <div><span className="block text-slate-400 text-xs uppercase font-bold mb-1">Procedure</span><span className="font-semibold text-slate-900">{consentForm.procedureName}</span></div>
                                 <div><span className="block text-slate-400 text-xs uppercase font-bold mb-1">Signer</span><span className="font-semibold text-slate-900">{patientDetails.fullName}</span></div>
-                                <div><span className="block text-slate-400 text-xs uppercase font-bold mb-1">Date</span><span className="font-semibold text-slate-900">{new Date(consentForm.signedDate!).toLocaleDateString()}</span></div>
+                                <div><span className="block text-slate-400 text-xs uppercase font-bold mb-1">Date</span><span className="font-semibold text-slate-900">{formatDisplayDate(consentForm.signedDate)}</span></div>
                                 <div><span className="block text-slate-400 text-xs uppercase font-bold mb-1">Status</span><span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">Verified</span></div>
                             </div>
 
@@ -112,7 +112,7 @@ export const CompletedView: React.FC = () => {
                                         </div>
                                         {consentForm.certificateIssuedAt && (
                                             <div className="text-xs text-slate-500 pt-2 border-t border-slate-100">
-                                                Issued: {new Date(consentForm.certificateIssuedAt).toLocaleString()}
+                                                Issued: {formatDisplayDateTime(consentForm.certificateIssuedAt)}
                                             </div>
                                         )}
                                     </div>
@@ -152,12 +152,12 @@ export const CompletedView: React.FC = () => {
                         </div>
 
                         <div className="bg-slate-50 px-8 py-4 border-t border-slate-200 flex justify-center items-center">
-                            <button 
+                            <button
                                 onClick={handleDownload}
                                 disabled={isDownloading}
                                 className="flex items-center gap-2 text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed px-4 py-2 rounded-lg text-sm font-bold transition-colors"
                             >
-                                <Download className="w-4 h-4" /> 
+                                <Download className="w-4 h-4" />
                                 {isDownloading ? 'Downloading...' : 'Download Signed PDF'}
                             </button>
                         </div>

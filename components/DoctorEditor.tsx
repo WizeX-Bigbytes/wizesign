@@ -9,6 +9,7 @@ import { EditorSidebar } from './doctor/EditorSidebar';
 import { SmartField, AppStep } from '../types';
 import { SendConfirmationModal } from './doctor/SendConfirmationModal';
 import toast from 'react-hot-toast';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 export const DoctorEditor: React.FC = () => {
     const navigate = useNavigate();
@@ -79,7 +80,7 @@ export const DoctorEditor: React.FC = () => {
                 type: 'DATE',
                 label: 'Date',
                 x: 75, y: 19.5, w: 15, h: 2.5,
-                value: new Date().toLocaleDateString()
+                value: formatDisplayDate(new Date())
             };
         } else {
             // Generic or Smart Text Fields
