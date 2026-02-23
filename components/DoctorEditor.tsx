@@ -130,6 +130,14 @@ export const DoctorEditor: React.FC = () => {
         });
     };
 
+    const hasSignatureField = () => {
+        const hasSig = consentForm.fields?.some(f => f.type === 'SIGNATURE');
+        if (!hasSig) {
+            toast.error("Please add at least one Signature field to the document before continuing.");
+        }
+        return hasSig;
+    };
+
     const validateForm = () => {
         const errors = new Set<string>();
         consentForm.fields?.forEach(field => {
@@ -141,7 +149,7 @@ export const DoctorEditor: React.FC = () => {
     };
 
     const handleSendClick = async () => {
-        if (!validateForm()) return;
+        if (!hasSignatureField() || !validateForm()) return;
 
         // Generate preview link by creating document first
         try {
@@ -244,6 +252,8 @@ export const DoctorEditor: React.FC = () => {
         console.log("Procedure Name:", consentForm.procedureName);
         console.log("File URL:", consentForm.fileUrl);
         console.log("Template ID:", consentForm.template_id);
+
+        if (!hasSignatureField()) return;
 
         if (!consentForm.procedureName || !consentForm.fileUrl) {
             console.error("Bailing out: procedureName or fileUrl is missing!", {

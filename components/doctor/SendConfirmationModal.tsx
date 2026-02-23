@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Check, Mail, Smartphone, User, FileText, Calendar, AlertCircle } from 'lucide-react';
 import { PatientDetails, ConsentForm } from '../../types';
 import { api } from '../../services/api';
+import toast from 'react-hot-toast';
 
 interface SendConfirmationModalProps {
     isOpen: boolean;
@@ -25,7 +26,7 @@ export const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
     const [linkCopied, setLinkCopied] = React.useState(false);
     const [wizechatStatus, setWizechatStatus] = React.useState<any>(null);
     const [checkingStatus, setCheckingStatus] = React.useState(true);
-    
+
     React.useEffect(() => {
         if (isOpen) {
             checkWizeChatStatus();
@@ -44,15 +45,50 @@ export const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
             setCheckingStatus(false);
         }
     };
-    
-    const copyToClipboard = () => {
-        if (patientLink) {
-            navigator.clipboard.writeText(patientLink);
-            setLinkCopied(true);
-            setTimeout(() => setLinkCopied(false), 2000);
+
+    const copyToClipboard = async () => {
+        if (!patientLink) return;
+
+        try {
+            // Modern async clipboard API (requires HTTPS/Secure Context)
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(patientLink);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+            } else {
+                // Fallback for non-secure contexts (e.g. testing over raw IPs)
+                const textArea = document.createElement("textarea");
+                textArea.value = patientLink;
+                // Avoid scrolling to bottom
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.position = "fixed";
+
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                    } else {
+                        throw new Error('Fallback copy failed');
+                    }
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                    toast.error('Failed to copy to clipboard. Please select and copy manually.');
+                }
+
+                document.body.removeChild(textArea);
+            }
+        } catch (err) {
+            console.error('Failed to copy!', err);
+            toast.error('Failed to copy to clipboard.');
         }
     };
-    
+
     if (!isOpen) return null;
 
     const hasPhoneNumber = !!patientDetails.phone;
