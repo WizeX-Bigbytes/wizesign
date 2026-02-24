@@ -230,7 +230,7 @@ export const DocumentDetailView: React.FC = () => {
                                                 <div className="text-xs text-slate-500 mb-1">Issued On</div>
                                                 <div className="font-semibold text-slate-900 text-sm">
                                                     {document.certificate_issued_at
-                                                        ? new Date(document.certificate_issued_at).toLocaleString()
+                                                        ? formatDisplayDateTime(document.certificate_issued_at)
                                                         : 'N/A'}
                                                 </div>
                                             </div>
@@ -250,7 +250,39 @@ export const DocumentDetailView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Document Preview - Hidden for signed/completed docs */}
+                        {/* Download Signed PDF — always visible for signed/completed docs */}
+                        {(document.status === 'SIGNED' || document.status === 'COMPLETED') && (
+                            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5">
+                                <h2 className="text-lg font-bold text-green-900 mb-3 flex items-center gap-2">
+                                    <Download className="w-5 h-5" />
+                                    Signed Document
+                                </h2>
+                                <p className="text-sm text-green-700 mb-4">
+                                    This document has been signed. Download the signed PDF with the embedded certificate.
+                                </p>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            const blob = await api.downloadSignedDocument(document.id);
+                                            const url = URL.createObjectURL(blob);
+                                            const a = window.document.createElement('a');
+                                            a.href = url;
+                                            a.download = `${document.procedure_name}-signed.pdf`;
+                                            a.click();
+                                            URL.revokeObjectURL(url);
+                                        } catch (e: any) {
+                                            alert(e?.message || 'Download failed');
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors shadow-sm"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Download Signed PDF
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Document Preview — only for non-signed docs */}
                         {document.status !== 'SIGNED' && document.status !== 'COMPLETED' && (
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900 mb-4">Document Preview</h2>
@@ -352,6 +384,31 @@ export const DocumentDetailView: React.FC = () => {
                                             </div>
                                         </div>
                                     )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Audit Trail */}
+                        {document.audit_trail && document.audit_trail.length > 0 && (
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-blue-600" />
+                                    Audit Trail
+                                </h2>
+                                <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
+                                    {document.audit_trail.map((event: any, idx: number) => (
+                                        <div key={idx} className={`flex items-start gap-4 px-5 py-3.5 ${idx !== document.audit_trail.length - 1 ? 'border-b border-slate-200' : ''}`}>
+                                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-semibold text-slate-800 text-sm capitalize">{(event.action || event.event_type || '').replace(/_/g, ' ')}</div>
+                                                {event.details && <div className="text-xs text-slate-500 mt-0.5 truncate">{typeof event.details === 'string' ? event.details : JSON.stringify(event.details)}</div>}
+                                            </div>
+                                            <div className="text-right flex-shrink-0">
+                                                <div className="text-xs text-slate-600 font-medium">{formatDisplayDateTime(event.timestamp || event.created_at)}</div>
+                                                {event.ip_address && <div className="text-[10px] text-slate-400 mt-0.5">{event.ip_address}</div>}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}

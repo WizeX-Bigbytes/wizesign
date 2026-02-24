@@ -4,6 +4,7 @@ import { useAppStore } from '../store/useAppStore';
 import { CheckCircle, Download, Shield, Clock, Zap } from 'lucide-react';
 import { api } from '../services/api';
 import { toast } from 'react-hot-toast';
+import { formatDisplayDate, formatDisplayDateTime } from '../utils/dateUtils';
 
 export const CompletedView: React.FC = () => {
     const navigate = useNavigate();

@@ -95,9 +95,9 @@ export const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
     const canSend = wizechatStatus?.configured && hasPhoneNumber && !checkingStatus;
 
     return (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[95dvh]">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
                     <div>
                         <h2 className="text-lg font-bold text-slate-900">Review & Send</h2>
                         <p className="text-slate-500 text-sm">Please verify the details before sending.</p>
@@ -110,7 +110,7 @@ export const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="p-6 space-y-4 overflow-y-auto flex-1">
                     {/* Patient Card */}
                     <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-3">

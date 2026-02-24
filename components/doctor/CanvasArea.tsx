@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 
@@ -50,6 +50,7 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
 
     // Scaling
     const [scale, setScale] = useState(1);
+    const [zoomLevel, setZoomLevel] = useState(1.0);
     const DOC_WIDTH = 800;
     const DOC_HEIGHT = 1132;
 
@@ -223,9 +224,43 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
 
 
     const isProcessing = externalIsProcessing || isRendering;
+    const effectiveScale = scale * zoomLevel;
+
+    const handleZoomIn = () => setZoomLevel(z => Math.min(2.0, parseFloat((z + 0.25).toFixed(2))));
+    const handleZoomOut = () => setZoomLevel(z => Math.max(0.25, parseFloat((z - 0.25).toFixed(2))));
+    const handleFit = () => setZoomLevel(1.0);
 
     return (
         <div className="flex-1 bg-slate-200/50 rounded-2xl border-2 border-dashed border-slate-300 overflow-hidden flex flex-col relative shadow-inner order-1 lg:order-2">
+            {/* Sticky Toolbar: Zoom + Page Nav */}
+            <div className="flex-shrink-0 flex items-center justify-between px-3 py-1.5 border-b border-slate-300 bg-white/80 backdrop-blur-sm">
+                {/* Page Nav */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1 || pages.length <= 1}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-md disabled:opacity-40 text-xs font-bold transition-colors"
+                    >← Prev</button>
+                    <span className="text-xs font-bold text-slate-600 min-w-[70px] text-center">
+                        {pages.length > 0 ? `Page ${currentPage} / ${pages.length}` : '—'}
+                    </span>
+                    <button
+                        onClick={() => setCurrentPage(Math.min(pages.length, currentPage + 1))}
+                        disabled={currentPage === pages.length || pages.length <= 1}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-md disabled:opacity-40 text-xs font-bold transition-colors"
+                    >Next →</button>
+                </div>
+
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1">
+                    <button onClick={handleZoomOut} disabled={zoomLevel <= 0.25} className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-40 transition-colors" title="Zoom out"><ZoomOut className="w-3.5 h-3.5 text-slate-600" /></button>
+                    <span className="text-xs font-bold text-slate-600 min-w-[38px] text-center">{Math.round(zoomLevel * 100)}%</span>
+                    <button onClick={handleZoomIn} disabled={zoomLevel >= 2.0} className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-40 transition-colors" title="Zoom in"><ZoomIn className="w-3.5 h-3.5 text-slate-600" /></button>
+                    <button onClick={handleFit} className="p-1.5 rounded hover:bg-slate-100 transition-colors" title="Fit to screen"><Maximize2 className="w-3.5 h-3.5 text-slate-600" /></button>
+                </div>
+            </div>
+
+            {/* Scrollable Canvas */}
             <div
                 ref={wrapperRef}
                 className="flex-1 overflow-auto flex flex-col items-center p-4 md:p-8 relative gap-8"
@@ -241,7 +276,7 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                             if (!pageUrl) return null;
 
                             return (
-                                <div key={pageNum} className="relative origin-top" style={{ width: DOC_WIDTH, height: DOC_HEIGHT, transform: `scale(${scale})`, marginBottom: `${(scale * DOC_HEIGHT) - DOC_HEIGHT}px` }}>
+                                <div key={pageNum} className="relative origin-top" style={{ width: DOC_WIDTH, height: DOC_HEIGHT, transform: `scale(${effectiveScale})`, marginBottom: `${(effectiveScale * DOC_HEIGHT) - DOC_HEIGHT}px` }}>
                                     <div
                                         ref={el => { containerRefs.current[pageNum] = el; }}
                                         className="absolute inset-0 bg-white shadow-2xl transition-all select-none ring-1 ring-black/5"
@@ -268,7 +303,7 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                                                 <div
                                                     key={field.id}
                                                     onMouseDown={(e) => handleMouseDown(e, field.id, pageNum)}
-                                                    onDoubleClick={(e) => { e.stopPropagation(); if (field.type !== 'SIGNATURE') setEditingFieldId(field.id); }}
+                                                    onDoubleClick={(e) => { e.stopPropagation(); if (field.type !== 'SIGNATURE' && field.type !== 'CHECKBOX') setEditingFieldId(field.id); }}
                                                     className={`absolute flex flex-col group ${isSelected ? 'z-40' : 'z-10'}`}
                                                     style={{ left: `${field.x}%`, top: `${field.y}%`, width: `${field.w}%`, height: `${field.h}%`, cursor: isSelected ? 'move' : 'pointer' }}
                                                 >
@@ -278,13 +313,30 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                                                         ))}
 
                                                         {isEditing ? (
-                                                            <input autoFocus className="w-full h-full bg-transparent border-none outline-none font-sans font-medium p-1 text-slate-900" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any }} value={field.value || ''} onChange={(e) => { updateField(field.id, { value: e.target.value }); if (validationErrors.has(field.id)) { onClearValidationError(field.id); } }} onBlur={() => { setEditingFieldId(null); if (field.id.includes('title-field')) updateConsentForm({ procedureName: field.value }); }} onMouseDown={(e) => e.stopPropagation()} />
+                                                            <input autoFocus className="w-full h-full bg-transparent border-none outline-none font-medium p-1 text-slate-900" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any, fontFamily: field.fontFamily || 'Inter, sans-serif' }} value={field.value || ''} onChange={(e) => { updateField(field.id, { value: e.target.value }); if (validationErrors.has(field.id)) { onClearValidationError(field.id); } }} onBlur={() => { setEditingFieldId(null); if (field.id.includes('title-field')) updateConsentForm({ procedureName: field.value }); }} onMouseDown={(e) => e.stopPropagation()} />
                                                         ) : (
                                                             <div className={`w-full h-full flex items-center ${field.type === 'SIGNATURE' ? 'justify-center' : 'justify-start px-1'}`}>
                                                                 {field.type === 'SIGNATURE' ? (
                                                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-amber-600' : 'text-amber-600/50'}`}>Signature</span>
+                                                                ) : field.type === 'CHECKBOX' ? (
+                                                                    <div
+                                                                        className="flex items-center gap-2 cursor-pointer select-none"
+                                                                        onMouseDown={(e) => { e.stopPropagation(); updateField(field.id, { value: field.value === 'true' ? 'false' : 'true' }); }}
+                                                                    >
+                                                                        <div
+                                                                            className={`border-2 rounded flex items-center justify-center flex-shrink-0 transition-colors ${field.value === 'true' ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-400'}`}
+                                                                            style={{ width: `${(field.fontSize || 14) + 4}px`, height: `${(field.fontSize || 14) + 4}px` }}
+                                                                        >
+                                                                            {field.value === 'true' && (
+                                                                                <svg className="text-white" viewBox="0 0 20 20" fill="currentColor" style={{ width: '70%', height: '70%' }}>
+                                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                                </svg>
+                                                                            )}
+                                                                        </div>
+                                                                        <span className="font-sans text-slate-700 truncate" style={{ fontSize: `${field.fontSize || 14}px` }}>{field.label}</span>
+                                                                    </div>
                                                                 ) : (
-                                                                    <span className="truncate w-full font-sans" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any }}>
+                                                                    <span className="truncate w-full" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any, fontFamily: field.fontFamily || 'Inter, sans-serif' }}>
                                                                         {field.value ? (
                                                                             <span className="text-slate-900">{field.value}</span>
                                                                         ) : (
@@ -305,11 +357,8 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                             );
                         })()}
 
-                        <div className="mt-8 flex items-center justify-center gap-4 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 z-50 relative">
-                            <button onClick={(e) => { e.stopPropagation(); setCurrentPage(Math.max(1, currentPage - 1)); }} disabled={currentPage === 1} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-md disabled:opacity-50 text-sm font-medium transition-colors">Previous</button>
-                            <span className="text-sm font-bold text-slate-600">Page {currentPage} of {pages.length}</span>
-                            <button onClick={(e) => { e.stopPropagation(); setCurrentPage(Math.min(pages.length, currentPage + 1)); }} disabled={currentPage === pages.length} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-md disabled:opacity-50 text-sm font-medium transition-colors">Next</button>
-                        </div>
+                        {/* Empty state */}
+                        <div />
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center text-slate-400 h-full w-full absolute inset-0">

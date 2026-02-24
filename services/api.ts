@@ -102,6 +102,11 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/templates/`, { headers: getAuthHeaders() });
     return handleResponse<any[]>(response);
   },
+
+  getTemplate: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/templates/${id}`, { headers: getAuthHeaders() });
+    return handleResponse<any>(response);
+  },
   
   saveTemplate: async (data: any) => {
     // If is_update flag is set and id exists, use PATCH to update existing template

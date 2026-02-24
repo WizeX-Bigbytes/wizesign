@@ -103,6 +103,8 @@ class DocumentResponse(BaseModel):
     patient_link: str  # The actual URL to send via WizeChat
     link_expiry: Optional[datetime]
     created_at: datetime
+    signed_date: Optional[datetime] = None
+    link_accessed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

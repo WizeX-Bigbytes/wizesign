@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PenTool, Loader2 } from 'lucide-react';
+import { PenTool, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 import { SmartField } from '../../types';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 
@@ -14,6 +14,7 @@ interface DocumentViewerProps {
     signature: string;
     onSignClick: () => void;
     patientName: string;
+    onFieldChange?: (fieldId: string, value: string) => void;
 }
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
@@ -21,10 +22,12 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     fields,
     signature,
     onSignClick,
-    patientName
+    patientName,
+    onFieldChange
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
+    const [zoomLevel, setZoomLevel] = useState(1.0);
     const [renderUrls, setRenderUrls] = useState<string[]>([]);
     const [isRendering, setIsRendering] = useState(false);
 
@@ -108,6 +111,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         return () => { isMounted = false; };
     }, [fileUrl]);
 
+    const handleZoomIn = () => setZoomLevel(z => Math.min(2.0, parseFloat((z + 0.25).toFixed(2))));
+    const handleZoomOut = () => setZoomLevel(z => Math.max(0.5, parseFloat((z - 0.25).toFixed(2))));
+
+    const effectiveScale = scale * zoomLevel;
+
     if (isRendering || renderUrls.length === 0) {
         return (
             <div className="bg-slate-200/50 rounded-xl md:rounded-2xl border border-slate-300 overflow-hidden flex flex-col items-center justify-center p-12 text-slate-400 min-h-[500px]">
@@ -118,73 +126,133 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     }
 
     return (
-        <div
-            ref={containerRef}
-            className="bg-slate-200/50 rounded-xl md:rounded-2xl border border-slate-300 overflow-hidden flex flex-col relative w-full items-center p-4 gap-8"
-        >
-            {renderUrls.map((pageUrl, index) => {
-                const pageNum = index + 1;
-                const pageFields = fields?.filter(f => (f.page || 1) === pageNum) || [];
+        <div className="flex flex-col gap-3">
+            {/* Zoom Controls */}
+            <div className="flex items-center justify-end gap-2 sticky top-0 z-10 bg-slate-50/80 backdrop-blur-sm py-2 px-3 rounded-xl border border-slate-200 self-start ml-auto">
+                <button
+                    onClick={handleZoomOut}
+                    disabled={zoomLevel <= 0.5}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-600"
+                    aria-label="Zoom out"
+                >
+                    <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-bold text-slate-600 min-w-[38px] text-center">
+                    {Math.round(zoomLevel * 100)}%
+                </span>
+                <button
+                    onClick={handleZoomIn}
+                    disabled={zoomLevel >= 2.0}
+                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-600"
+                    aria-label="Zoom in"
+                >
+                    <ZoomIn className="w-4 h-4" />
+                </button>
+            </div>
 
-                return (
-                    <div
-                        key={pageNum}
-                        className="relative origin-top"
-                        style={{
-                            width: DOC_WIDTH,
-                            height: DOC_HEIGHT,
-                            transform: `scale(${scale})`,
-                            marginBottom: `${(scale * DOC_HEIGHT) - DOC_HEIGHT}px`
-                        }}
-                    >
+            <div
+                ref={containerRef}
+                className="bg-slate-200/50 rounded-xl md:rounded-2xl border border-slate-300 overflow-auto flex flex-col relative w-full items-center p-4 gap-8"
+            >
+                {renderUrls.map((pageUrl, index) => {
+                    const pageNum = index + 1;
+                    const pageFields = fields?.filter(f => (f.page || 1) === pageNum) || [];
+
+                    return (
                         <div
-                            className="absolute inset-0 bg-white shadow-xl ring-1 ring-black/5"
+                            key={pageNum}
+                            className="relative origin-top"
                             style={{
-                                width: '100%',
-                                height: '100%',
-                                backgroundImage: `url(${pageUrl})`,
-                                backgroundSize: '100% 100%',
-                                backgroundRepeat: 'no-repeat',
+                                width: DOC_WIDTH,
+                                height: DOC_HEIGHT,
+                                transform: `scale(${effectiveScale})`,
+                                marginBottom: `${(effectiveScale * DOC_HEIGHT) - DOC_HEIGHT}px`
                             }}
                         >
-                            {pageFields.map((field) => (
-                                <div key={field.id} className="absolute flex flex-col justify-end" style={{ left: `${field.x}%`, top: `${field.y}%`, width: `${field.w}%`, height: `${field.h}%` }}>
-                                    {field.type === 'SIGNATURE' ? (
-                                        <button
-                                            onClick={onSignClick}
-                                            className={`w-full h-full rounded-lg border-2 transition-all flex items-center justify-center group 
-                                            ${signature
-                                                    ? 'bg-transparent border-transparent'
-                                                    : 'bg-amber-50/50 border-amber-400 hover:bg-amber-100/50 cursor-pointer animate-pulse'}`}
-                                        >
-                                            {signature ? (
-                                                <img src={signature} alt="Signed" className="max-h-full max-w-full object-contain" />
-                                            ) : (
-                                                <div className="flex flex-col items-center text-amber-700 scale-90 md:scale-100">
-                                                    <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm mb-1 uppercase tracking-wide whitespace-nowrap">Click to Sign</span>
-                                                    <PenTool className="w-5 h-5 opacity-50" />
-                                                </div>
-                                            )}
-                                        </button>
-                                    ) : (
-                                        <div
-                                            className="w-full h-full flex items-end px-2 pb-1 font-serif text-slate-900 leading-none"
-                                            style={{
-                                                background: 'transparent',
-                                                fontSize: `${field.fontSize || 14}px`,
-                                                fontWeight: field.fontWeight || 'normal',
-                                                textAlign: field.textAlign || 'left' as any
-                                            }}
-                                        >
-                                            {field.value || patientName}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                            <div
+                                className="absolute inset-0 bg-white shadow-xl ring-1 ring-black/5"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    backgroundImage: `url(${pageUrl})`,
+                                    backgroundSize: '100% 100%',
+                                    backgroundRepeat: 'no-repeat',
+                                }}
+                            >
+                                {pageFields.map((field) => (
+                                    <div
+                                        key={field.id}
+                                        className="absolute flex flex-col justify-start"
+                                        style={{ left: `${field.x}%`, top: `${field.y}%`, width: `${field.w}%`, height: `${field.h}%` }}
+                                    >
+                                        {field.type === 'SIGNATURE' ? (
+                                            <button
+                                                onClick={onSignClick}
+                                                className={`w-full h-full rounded-lg border-2 transition-all flex items-center justify-center group 
+                                                ${signature
+                                                        ? 'bg-transparent border-transparent'
+                                                        : 'bg-amber-50/50 border-amber-400 hover:bg-amber-100/50 cursor-pointer animate-pulse'}`}
+                                            >
+                                                {signature ? (
+                                                    <img src={signature} alt="Signed" className="max-h-full max-w-full object-contain" />
+                                                ) : (
+                                                    <div className="flex flex-col items-center text-amber-700 scale-90 md:scale-100">
+                                                        <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm mb-1 uppercase tracking-wide whitespace-nowrap">Click to Sign</span>
+                                                        <PenTool className="w-5 h-5 opacity-50" />
+                                                    </div>
+                                                )}
+                                            </button>
+                                        ) : field.type === 'CHECKBOX' ? (
+                                            <div
+                                                className="w-full h-full flex items-start pt-1"
+                                                style={{ padding: '2px' }}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onFieldChange && onFieldChange(field.id, field.value === 'true' ? 'false' : 'true')}
+                                                    className={`border-2 rounded flex items-center justify-center flex-shrink-0 transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 hover:scale-110 active:scale-95 cursor-pointer ${field.value === 'true' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-200' : 'bg-white border-slate-400 hover:border-blue-400'}`}
+                                                    style={{ width: `${(field.fontSize || 14) + 6}px`, height: `${(field.fontSize || 14) + 6}px` }}
+                                                    aria-label={field.label || 'Checkbox'}
+                                                    aria-checked={field.value === 'true'}
+                                                    role="checkbox"
+                                                >
+                                                    {field.value === 'true' && (
+                                                        <svg className="text-white" viewBox="0 0 20 20" fill="currentColor" style={{ width: '70%', height: '70%' }}>
+                                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                                {field.label && (
+                                                    <span
+                                                        className="ml-2 leading-tight text-slate-900 cursor-pointer select-none"
+                                                        style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', fontFamily: field.fontFamily || 'Inter, sans-serif' }}
+                                                        onClick={() => onFieldChange && onFieldChange(field.id, field.value === 'true' ? 'false' : 'true')}
+                                                    >
+                                                        {field.label}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className="w-full h-full flex items-start pt-1 px-1 text-slate-900 leading-tight"
+                                                style={{
+                                                    background: 'transparent',
+                                                    fontSize: `${field.fontSize || 14}px`,
+                                                    fontWeight: field.fontWeight || 'normal',
+                                                    fontFamily: field.fontFamily || 'Inter, sans-serif',
+                                                    textAlign: (field.textAlign || 'left') as any
+                                                }}
+                                            >
+                                                {field.value || patientName}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                );
-            })}
+                    );
+                })}
+            </div>
         </div>
     );
 };

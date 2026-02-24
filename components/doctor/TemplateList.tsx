@@ -2,12 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     FileText, Plus, Search, MoreHorizontal, Clock, Edit2, Trash2, Check
 } from 'lucide-react';
-import { formatDisplayDate } from '../../utils/dateUtils';
+import { formatDisplayDate, formatDisplayDateTime } from '../../utils/dateUtils';
 
 interface Template {
     id: string;
     name: string;
     url: string;
+    created_at?: string;
     updatedAt?: string;
     category?: string;
     fields?: any[];
@@ -21,6 +22,7 @@ interface TemplateListProps {
     onDelete: (id: string) => void;
     onBulkDelete?: (ids: string[]) => void;
     onViewDocuments?: (templateName: string) => void;
+    onDuplicate?: (id: string) => void;
 }
 
 const DocumentPreviewIcon = () => (
@@ -58,7 +60,8 @@ export const TemplateList: React.FC<TemplateListProps> = ({
     onRename,
     onDelete,
     onBulkDelete,
-    onViewDocuments
+    onViewDocuments,
+    onDuplicate
 }) => {
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [renamingTemplateId, setRenamingTemplateId] = useState<string | null>(null);
@@ -221,7 +224,11 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                                         )}
                                         <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                                             <Clock className="w-3 h-3" />
-                                            {t.updatedAt ? formatDisplayDate(t.updatedAt) : 'Recently'}
+                                            {t.created_at
+                                                ? formatDisplayDateTime(t.created_at)
+                                                : t.updatedAt
+                                                    ? formatDisplayDateTime(t.updatedAt)
+                                                    : 'Recently added'}
                                         </p>
                                     </div>
                                     <div className="relative" ref={activeMenuId === t.id ? menuRef : null}>
@@ -232,6 +239,16 @@ export const TemplateList: React.FC<TemplateListProps> = ({
                                             <div className="absolute right-0 top-full mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-[100] animate-in zoom-in-95 duration-100 origin-top-right">
                                                 <button onClick={(e) => startRenaming(e, t.id, t.name)} className="w-full text-left px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2 font-medium">
                                                     <Edit2 className="w-3.5 h-3.5" /> Rename
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveMenuId(null);
+                                                        if (onDuplicate) onDuplicate(t.id);
+                                                    }}
+                                                    className="w-full text-left px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2 font-medium"
+                                                >
+                                                    <FileText className="w-3.5 h-3.5" /> Duplicate
                                                 </button>
                                                 <button
                                                     onClick={(e) => {

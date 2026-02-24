@@ -142,6 +142,53 @@ class PDFGeneratorService:
                                         can.drawRightString(x_pos + width, text_y, value)
                                     else:
                                         can.drawString(x_pos, text_y, value)
+
+                            elif field_type == 'CHECKBOX':
+                                font_size = field.get('fontSize', 14)
+                                box_size = font_size + 4
+                                box_x = x_pos
+                                box_y = y_pos + (height - box_size) / 2  # vertically center in field
+
+                                is_checked = str(field.get('value', 'false')).lower() == 'true'
+
+                                if is_checked:
+                                    # Filled blue box
+                                    can.setFillColorRGB(0.22, 0.45, 0.93)  # blue-600
+                                    can.setStrokeColorRGB(0.22, 0.45, 0.93)
+                                    can.rect(box_x, box_y, box_size, box_size, fill=1, stroke=0)
+
+                                    # White checkmark using lines
+                                    can.setStrokeColorRGB(1, 1, 1)
+                                    can.setLineWidth(max(1.5, box_size * 0.12))
+                                    can.setLineCap(1)  # round
+                                    can.setLineJoin(1)  # round
+                                    # tick: short left leg then long right leg
+                                    tick_x1 = box_x + box_size * 0.18
+                                    tick_y1 = box_y + box_size * 0.45
+                                    tick_x2 = box_x + box_size * 0.38
+                                    tick_y2 = box_y + box_size * 0.22
+                                    tick_x3 = box_x + box_size * 0.80
+                                    tick_y3 = box_y + box_size * 0.72
+                                    p = can.beginPath()
+                                    p.moveTo(tick_x1, tick_y1)
+                                    p.lineTo(tick_x2, tick_y2)
+                                    p.lineTo(tick_x3, tick_y3)
+                                    can.drawPath(p, stroke=1, fill=0)
+                                else:
+                                    # Empty box outline
+                                    can.setStrokeColorRGB(0.4, 0.4, 0.4)
+                                    can.setLineWidth(1)
+                                    can.rect(box_x, box_y, box_size, box_size, fill=0, stroke=1)
+
+                                # Draw label text beside the checkbox
+                                label = field.get('label', '')
+                                if label:
+                                    can.setFont("Helvetica", font_size)
+                                    can.setFillColorRGB(0, 0, 0)
+                                    label_x = box_x + box_size + 4
+                                    label_y = box_y + (box_size - font_size) / 2 + 1
+                                    can.drawString(label_x, label_y, label)
+
                         
                         can.save()
                         packet.seek(0)

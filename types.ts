@@ -22,7 +22,7 @@ export interface AuditEvent {
 
 export interface SmartField {
   id: string;
-  type: 'TEXT' | 'DATE' | 'SIGNATURE';
+  type: 'TEXT' | 'DATE' | 'SIGNATURE' | 'CHECKBOX';
   label: string;
   x: number; // Percentage 0-100
   y: number; // Percentage 0-100
@@ -33,6 +33,7 @@ export interface SmartField {
   source?: string; // Link to a data source (e.g. 'patient.fullName')
   fontSize?: number; // Font size in pixels
   fontWeight?: string; // 'normal' | 'bold'
+  fontFamily?: string; // e.g. 'Inter', 'Georgia', 'Courier New'
   textAlign?: 'left' | 'center' | 'right';
 }
 

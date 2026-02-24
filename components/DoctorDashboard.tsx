@@ -99,6 +99,21 @@ export const DoctorDashboard: React.FC = () => {
   const { mutate: updateTemplate } = useUpdateTemplate();
   const { mutate: deleteTemplate } = useDeleteTemplate();
 
+  const handleDuplicateTemplate = async (id: string) => {
+    try {
+      const original = await api.getTemplate(id);
+      await api.saveTemplate({
+        name: `Copy of ${original.name}`,
+        file_url: original.file_url,
+        fields: original.fields,
+      });
+      toast.success(`"Copy of ${original.name}" created!`);
+      queryClient.invalidateQueries({ queryKey: ['templates'] });
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to duplicate template');
+    }
+  };
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isProcessingPdf, setIsProcessingPdf] = useState(false);
 
@@ -337,6 +352,7 @@ export const DoctorDashboard: React.FC = () => {
                 setActiveTemplateFilter(name);
                 setViewMode('documents');
               }}
+              onDuplicate={handleDuplicateTemplate}
             />
             <CreateTemplateModal
               isOpen={showCreateModal}

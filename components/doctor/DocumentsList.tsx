@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Eye, Clock, CheckCircle, Send, AlertCircle, Search, Filter } from 'lucide-react';
-import { formatDisplayDate } from '../../utils/dateUtils';
+import { formatDisplayDate, formatDisplayDateTime } from '../../utils/dateUtils';
 
 interface Document {
     id: string;
@@ -8,6 +8,7 @@ interface Document {
     status: string;
     created_at: string;
     signed_date?: string;
+    link_accessed_at?: string;
     patient: {
         full_name: string;
         email?: string;
@@ -190,7 +191,17 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
 
                                             <div className="flex items-center gap-1.5 text-slate-400 text-xs">
                                                 <Clock className="w-3 h-3" />
-                                                <span>{formatDisplayDate(doc.created_at)}</span>
+                                                <span>
+                                                    {doc.status === 'SIGNED' || doc.status === 'COMPLETED'
+                                                        ? doc.signed_date
+                                                            ? <>Signed: {formatDisplayDateTime(doc.signed_date)}</>
+                                                            : <>Sent: {formatDisplayDateTime(doc.created_at)}</>
+                                                        : doc.status === 'VIEWED'
+                                                            ? doc.link_accessed_at
+                                                                ? <>Viewed: {formatDisplayDateTime(doc.link_accessed_at)}</>
+                                                                : <>Sent: {formatDisplayDateTime(doc.created_at)}</>
+                                                            : <>Sent: {formatDisplayDateTime(doc.created_at)}</>}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>

@@ -82,6 +82,14 @@ export const DoctorEditor: React.FC = () => {
                 x: 75, y: 19.5, w: 15, h: 2.5,
                 value: formatDisplayDate(new Date())
             };
+        } else if (type === 'CHECKBOX') {
+            newField = {
+                ...baseField,
+                type: 'CHECKBOX',
+                label: config?.label || 'Checkbox',
+                w: 30, h: 3,
+                value: 'false' // 'true' or 'false' as string
+            };
         } else {
             // Generic or Smart Text Fields
             newField = {
@@ -345,6 +353,9 @@ export const DoctorEditor: React.FC = () => {
                         onChangeFontSize={changeFontSize}
                         onToggleBold={toggleBold}
                         onSetTextAlign={setTextAlign}
+                        onSetFontFamily={(family) => {
+                            selectedIds.forEach(id => updateField(id, { fontFamily: family }));
+                        }}
                         onDeleteSelected={() => { selectedIds.forEach(id => removeField(id)); setSelectedIds(new Set()); }}
                     />
 

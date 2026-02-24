@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { useSubmitSignature, useDocumentByToken } from '../hooks/useAppQueries';
-import { AuditEvent } from '../types';
+import { AuditEvent, SmartField } from '../types';
 import { SignaturePad } from './SignaturePad';
 import { X, Loader2, AlertCircle } from 'lucide-react';
 
@@ -36,6 +36,18 @@ export const PatientView: React.FC = () => {
     const [showSignModal, setShowSignModal] = useState(false);
     const [verificationStep, setVerificationStep] = useState<'START' | 'OTP' | 'VERIFIED'>('START');
     const [isProcessingOtp, setIsProcessingOtp] = useState(false);
+    const [localFields, setLocalFields] = useState<SmartField[]>([]);
+
+    // Sync localFields when consentForm.fields loads
+    useEffect(() => {
+        if (consentForm.fields && consentForm.fields.length > 0) {
+            setLocalFields(consentForm.fields);
+        }
+    }, [consentForm.fields]);
+
+    const handleFieldChange = (fieldId: string, value: string) => {
+        setLocalFields(prev => prev.map(f => f.id === fieldId ? { ...f, value } : f));
+    };
 
     // Initial Data Sync when document loads
     useEffect(() => {
@@ -269,10 +281,11 @@ export const PatientView: React.FC = () => {
                 {/* Document Viewer */}
                 <DocumentViewer
                     fileUrl={consentForm.fileUrl || ''}
-                    fields={consentForm.fields}
+                    fields={localFields.length > 0 ? localFields : consentForm.fields}
                     signature={signature}
                     onSignClick={() => setShowSignModal(true)}
                     patientName={patientDetails.fullName}
+                    onFieldChange={handleFieldChange}
                 />
             </div>
 

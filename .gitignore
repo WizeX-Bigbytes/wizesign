@@ -27,6 +27,6 @@ docker-data/
 # OS specific
 .DS_Store
 Thumbs.db
-
+*.pdf
 # WizeSign specific
 backend/app/static/signatures/

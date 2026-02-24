@@ -2,7 +2,7 @@ import React from 'react';
 import {
     FileText, Minus, Plus, Bold,
     AlignLeft, AlignCenter, AlignRight, Trash2,
-    User, Type, Calendar, PenTool
+    User, Type, Calendar, PenTool, CheckSquare
 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 
@@ -13,6 +13,7 @@ interface EditorSidebarProps {
     onChangeFontSize: (delta: number) => void;
     onToggleBold: () => void;
     onSetTextAlign: (align: 'left' | 'center' | 'right') => void;
+    onSetFontFamily: (family: string) => void;
     onDeleteSelected: () => void;
 }
 
@@ -23,12 +24,23 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
     onChangeFontSize,
     onToggleBold,
     onSetTextAlign,
+    onSetFontFamily,
     onDeleteSelected
 }) => {
     const {
         consentForm, patientDetails, updatePatientDetails,
         updateConsentForm, updateField
     } = useAppStore();
+
+    const FONT_FAMILIES = [
+        { label: 'Inter (Default)', value: 'Inter, sans-serif' },
+        { label: 'Arial', value: 'Arial, sans-serif' },
+        { label: 'Georgia', value: 'Georgia, serif' },
+        { label: 'Times New Roman', value: '"Times New Roman", serif' },
+        { label: 'Courier New', value: '"Courier New", monospace' },
+        { label: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif' },
+        { label: 'Verdana', value: 'Verdana, sans-serif' },
+    ];
 
     const getCommonFontSize = () => {
         if (selectedIds.size === 0) return 14;
@@ -133,17 +145,44 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                             )}
 
                             {/* Font & Style */}
-                            <div className="flex gap-2 mb-3">
-                                <div className="flex items-center gap-1 bg-white p-1 rounded border border-slate-200">
-                                    <button onClick={() => onChangeFontSize(-1)} className="p-1 hover:bg-slate-50"><Minus className="w-3 h-3" /></button>
-                                    <span className="text-xs font-bold w-6 text-center">{getCommonFontSize()}</span>
-                                    <button onClick={() => onChangeFontSize(1)} className="p-1 hover:bg-slate-50"><Plus className="w-3 h-3" /></button>
-                                </div>
-                                <button onClick={onToggleBold} className="bg-white p-1.5 rounded border border-slate-200 hover:bg-slate-50"><Bold className="w-3.5 h-3.5" /></button>
-                                <div className="flex bg-white rounded border border-slate-200 p-0.5 ml-auto">
-                                    <button onClick={() => onSetTextAlign('left')} className="p-1 hover:bg-slate-50"><AlignLeft className="w-3.5 h-3.5" /></button>
-                                    <button onClick={() => onSetTextAlign('center')} className="p-1 hover:bg-slate-50"><AlignCenter className="w-3.5 h-3.5" /></button>
-                                    <button onClick={() => onSetTextAlign('right')} className="p-1 hover:bg-slate-50"><AlignRight className="w-3.5 h-3.5" /></button>
+                            <div className="space-y-2 mb-3">
+                                {/* Font Family Dropdown */}
+                                {selectedIds.size === 1 && (() => {
+                                    const id = Array.from(selectedIds)[0];
+                                    const field = consentForm.fields?.find(f => f.id === id);
+                                    const currentFont = field?.fontFamily || 'Inter, sans-serif';
+                                    return (
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Font Family</label>
+                                            <select
+                                                value={currentFont}
+                                                onChange={(e) => onSetFontFamily(e.target.value)}
+                                                className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                                                style={{ fontFamily: currentFont }}
+                                            >
+                                                {FONT_FAMILIES.map(f => (
+                                                    <option key={f.value} value={f.value} style={{ fontFamily: f.value }}>
+                                                        {f.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Size / Bold / Align row */}
+                                <div className="flex gap-2">
+                                    <div className="flex items-center gap-1 bg-white p-1 rounded border border-slate-200">
+                                        <button onClick={() => onChangeFontSize(-1)} className="p-1 hover:bg-slate-50"><Minus className="w-3 h-3" /></button>
+                                        <span className="text-xs font-bold w-6 text-center">{getCommonFontSize()}</span>
+                                        <button onClick={() => onChangeFontSize(1)} className="p-1 hover:bg-slate-50"><Plus className="w-3 h-3" /></button>
+                                    </div>
+                                    <button onClick={onToggleBold} className="bg-white p-1.5 rounded border border-slate-200 hover:bg-slate-50"><Bold className="w-3.5 h-3.5" /></button>
+                                    <div className="flex bg-white rounded border border-slate-200 p-0.5 ml-auto">
+                                        <button onClick={() => onSetTextAlign('left')} className="p-1 hover:bg-slate-50"><AlignLeft className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => onSetTextAlign('center')} className="p-1 hover:bg-slate-50"><AlignCenter className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => onSetTextAlign('right')} className="p-1 hover:bg-slate-50"><AlignRight className="w-3.5 h-3.5" /></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -201,7 +240,8 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
                             <div className="grid grid-cols-4 gap-2">
                                 <button onClick={() => onAddField('TEXT', { label: 'Text Box' })} className="flex flex-col items-center justify-center p-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95"><Type className="w-4 h-4 mb-1 text-slate-400" /><span className="text-[9px] font-bold text-slate-600">Text</span></button>
                                 <button onClick={() => onAddField('TITLE')} className="flex flex-col items-center justify-center p-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95"><Type className="w-4 h-4 mb-1 text-slate-800" /><span className="text-[9px] font-bold text-slate-600">Header</span></button>
-                                <button onClick={() => onAddField('SIGNATURE')} className="col-span-2 flex flex-row items-center justify-center gap-2 p-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg shadow-sm text-amber-700 transition-all hover:scale-105 active:scale-95"><PenTool className="w-4 h-4" /><span className="text-[9px] font-bold">Signature Box</span></button>
+                                <button onClick={() => onAddField('CHECKBOX', { label: 'Agree' })} className="flex flex-col items-center justify-center p-2 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95"><CheckSquare className="w-4 h-4 mb-1 text-slate-400 group-hover:text-blue-500" /><span className="text-[9px] font-bold text-slate-600">Checkbox</span></button>
+                                <button onClick={() => onAddField('SIGNATURE')} className="flex flex-col items-center justify-center p-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg shadow-sm text-amber-700 transition-all hover:scale-105 active:scale-95"><PenTool className="w-4 h-4 mb-1" /><span className="text-[9px] font-bold">Sign</span></button>
                             </div>
                         </div>
                     </div>
