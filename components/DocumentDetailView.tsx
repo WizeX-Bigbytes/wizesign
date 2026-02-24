@@ -4,6 +4,43 @@ import { api } from '../services/api';
 import { ArrowLeft, FileText, User, Calendar, Clock, CheckCircle, Mail, Phone, Download } from 'lucide-react';
 import { formatDisplayDate, formatDisplayDateTime } from '../utils/dateUtils';
 
+/** Turns a raw User-Agent string into a human-readable label. */
+const parseUserAgent = (ua: string): string => {
+    // Browser detection (order matters — Edge must come before Chrome)
+    let browser = 'Unknown Browser';
+    if (/Edg\//.test(ua)) browser = 'Microsoft Edge';
+    else if (/OPR\/|Opera/.test(ua)) browser = 'Opera';
+    else if (/Chrome\//.test(ua)) browser = 'Google Chrome';
+    else if (/Firefox\//.test(ua)) browser = 'Firefox';
+    else if (/Safari\//.test(ua)) browser = 'Safari';
+    else if (/MSIE|Trident/.test(ua)) browser = 'Internet Explorer';
+
+    // OS detection
+    let os = 'Unknown OS';
+    if (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
+    else if (/Windows NT 6\.3/.test(ua)) os = 'Windows 8.1';
+    else if (/Windows NT 6\.1/.test(ua)) os = 'Windows 7';
+    else if (/Windows/.test(ua)) os = 'Windows';
+    else if (/iPhone/.test(ua)) os = 'iPhone';
+    else if (/iPad/.test(ua)) os = 'iPad';
+    else if (/Android/.test(ua)) os = 'Android';
+    else if (/Mac OS X/.test(ua)) os = 'macOS';
+    else if (/Linux/.test(ua)) os = 'Linux';
+
+    return `${browser} on ${os}`;
+};
+
+/** Formats an audit event's details field for display. */
+const formatAuditDetail = (details: any): string => {
+    if (!details) return '';
+    const str = typeof details === 'string' ? details : JSON.stringify(details);
+    // Check if it looks like a User-Agent string
+    if (/Mozilla\//.test(str) || /AppleWebKit/.test(str)) {
+        return parseUserAgent(str);
+    }
+    return str;
+};
+
 export const DocumentDetailView: React.FC = () => {
     const { documentId } = useParams<{ documentId: string }>();
     const navigate = useNavigate();
@@ -401,7 +438,7 @@ export const DocumentDetailView: React.FC = () => {
                                             <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
                                             <div className="flex-1 min-w-0">
                                                 <div className="font-semibold text-slate-800 text-sm capitalize">{(event.action || event.event_type || '').replace(/_/g, ' ')}</div>
-                                                {event.details && <div className="text-xs text-slate-500 mt-0.5 truncate">{typeof event.details === 'string' ? event.details : JSON.stringify(event.details)}</div>}
+                                                {event.details && <div className="text-xs text-slate-500 mt-0.5 truncate" title={typeof event.details === 'string' ? event.details : JSON.stringify(event.details)}>{formatAuditDetail(event.details)}</div>}
                                             </div>
                                             <div className="text-right flex-shrink-0">
                                                 <div className="text-xs text-slate-600 font-medium">{formatDisplayDateTime(event.timestamp || event.created_at)}</div>
