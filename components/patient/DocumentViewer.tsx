@@ -234,7 +234,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                                             </div>
                                         ) : (
                                             <div
-                                                className="w-full h-full flex items-start pt-1 px-1 text-slate-900 leading-tight"
+                                                className="w-full h-full pt-1 px-1 text-slate-900 leading-tight overflow-hidden break-words"
                                                 style={{
                                                     background: 'transparent',
                                                     fontSize: `${field.fontSize || 14}px`,

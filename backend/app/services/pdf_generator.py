@@ -26,7 +26,9 @@ class PDFGeneratorService:
         signed_date: datetime,
         certificate_hash: str,
         original_pdf_path: Optional[str] = None,
-        signature_fields: Optional[list] = None
+        signature_fields: Optional[list] = None,
+        ip_address: Optional[str] = None,
+        phone_number: Optional[str] = None
     ) -> str:
         """
         Generate a signed PDF with the signature embedded on the original document.
@@ -202,7 +204,8 @@ class PDFGeneratorService:
                 # Add certificate page at the end
                 cert_page = self._create_certificate_page(
                     procedure_name, patient_name, signed_date, 
-                    certificate_hash, document_id, signature_base64
+                    certificate_hash, document_id, signature_base64,
+                    ip_address, phone_number
                 )
                 writer.add_page(cert_page)
                 
@@ -224,7 +227,8 @@ class PDFGeneratorService:
         can = canvas.Canvas(packet, pagesize=letter)
         self._draw_certificate_content(
             can, procedure_name, patient_name, signed_date,
-            certificate_hash, document_id, signature_base64
+            certificate_hash, document_id, signature_base64,
+            ip_address, phone_number
         )
         can.save()
         packet.seek(0)
@@ -237,14 +241,16 @@ class PDFGeneratorService:
     
     def _create_certificate_page(
         self, procedure_name: str, patient_name: str, signed_date: datetime,
-        certificate_hash: str, document_id: str, signature_base64: str
+        certificate_hash: str, document_id: str, signature_base64: str,
+        ip_address: Optional[str] = None, phone_number: Optional[str] = None
     ):
         """Create a certificate page as a PdfReader page"""
         packet = io.BytesIO()
         can = canvas.Canvas(packet, pagesize=letter)
         self._draw_certificate_content(
             can, procedure_name, patient_name, signed_date,
-            certificate_hash, document_id, signature_base64
+            certificate_hash, document_id, signature_base64,
+            ip_address, phone_number
         )
         can.save()
         packet.seek(0)
@@ -253,14 +259,16 @@ class PDFGeneratorService:
     
     def _create_certificate_page_canvas(
         self, procedure_name: str, patient_name: str, signed_date: datetime,
-        certificate_hash: str, document_id: str, signature_base64: str
+        certificate_hash: str, document_id: str, signature_base64: str,
+        ip_address: Optional[str] = None, phone_number: Optional[str] = None
     ) -> io.BytesIO:
         """Create a certificate page and return as BytesIO"""
         packet = io.BytesIO()
         can = canvas.Canvas(packet, pagesize=letter)
         self._draw_certificate_content(
             can, procedure_name, patient_name, signed_date,
-            certificate_hash, document_id, signature_base64
+            certificate_hash, document_id, signature_base64,
+            ip_address, phone_number
         )
         can.save()
         packet.seek(0)
@@ -269,93 +277,145 @@ class PDFGeneratorService:
     def _draw_certificate_content(
         self, can: canvas.Canvas, procedure_name: str, patient_name: str,
         signed_date: datetime, certificate_hash: str, document_id: str,
-        signature_base64: str
+        signature_base64: str, ip_address: Optional[str] = None,
+        phone_number: Optional[str] = None
     ):
-        """Draw certificate content on a canvas"""
+        """Draw certificate content on a canvas — Section 63/65B (BSA 2023) compliant"""
+        from datetime import timezone, timedelta
         width, height = letter
+        IST = timezone(timedelta(hours=5, minutes=30))
+        ist_signed = signed_date.replace(tzinfo=timezone.utc).astimezone(IST) if signed_date.tzinfo is None else signed_date.astimezone(IST)
+        ist_str = ist_signed.strftime('%d-%m-%Y %H:%M:%S IST')
+        ist_generated = datetime.now(IST).strftime('%d-%m-%Y %H:%M:%S IST')
         
-        # Header with border
-        can.setStrokeColorRGB(0.2, 0.3, 0.6)
+        # ─── Header ───
+        can.setStrokeColorRGB(0.15, 0.25, 0.55)
         can.setLineWidth(2)
-        can.rect(30, height - 150, width - 60, 130, stroke=1, fill=0)
+        can.rect(30, height - 60, width - 60, 40, stroke=1, fill=0)
+        can.setFillColorRGB(0.15, 0.25, 0.55)
+        can.setFont("Helvetica-Bold", 16)
+        can.drawCentredString(width / 2, height - 47, "ELECTRONIC RECORD CERTIFICATE")
         
-        # Title
-        can.setFillColorRGB(0.2, 0.3, 0.6)
-        can.setFont("Helvetica-Bold", 20)
-        can.drawCentredString(width / 2, height - 50, "DIGITALLY SIGNED DOCUMENT")
+        # Sub-header — legal reference 
+        can.setFillColorRGB(0.3, 0.3, 0.3)
+        can.setFont("Helvetica", 8)
+        can.drawCentredString(width / 2, height - 70, "Under Section 63 & 65B of the Bharatiya Sakshya Adhiniyam, 2023 (BSA)")
+        can.drawCentredString(width / 2, height - 80, "Read with Section 3A of the Information Technology Act, 2000")
         
-        # Document info box
+        # ─── Document Details ───
+        y = height - 110
         can.setFillColorRGB(0, 0, 0)
-        can.setFont("Helvetica-Bold", 12)
-        can.drawString(50, height - 80, "Document:")
-        can.setFont("Helvetica", 12)
-        can.drawString(150, height - 80, procedure_name)
+        can.setFont("Helvetica-Bold", 11)
+        can.drawString(50, y, "1. DOCUMENT DETAILS")
+        can.setLineWidth(0.5)
+        can.line(50, y - 3, width - 50, y - 3)
         
-        can.setFont("Helvetica-Bold", 12)
-        can.drawString(50, height - 100, "Signed by:")
-        can.setFont("Helvetica", 12)
-        can.drawString(150, height - 100, patient_name)
+        y -= 20
+        details = [
+            ("Document:", procedure_name),
+            ("Signed by:", patient_name),
+            ("Date & Time (IST):", ist_str),
+            ("IP Address:", ip_address or "Not captured"),
+            ("Verified Phone:", phone_number or "Not captured"),
+            ("Document ID:", document_id),
+        ]
+        for label, value in details:
+            can.setFont("Helvetica-Bold", 9)
+            can.drawString(60, y, label)
+            can.setFont("Helvetica", 9)
+            can.drawString(190, y, str(value))
+            y -= 16
         
-        can.setFont("Helvetica-Bold", 12)
-        can.drawString(50, height - 120, "Date & Time:")
-        can.setFont("Helvetica", 12)
-        can.drawString(150, height - 120, signed_date.strftime('%Y-%m-%d %H:%M:%S UTC'))
+        # ─── Signature ───
+        y -= 10
+        can.setFont("Helvetica-Bold", 11)
+        can.drawString(50, y, "2. ELECTRONIC SIGNATURE")
+        can.line(50, y - 3, width - 50, y - 3)
+        y -= 10
         
-        # Signature section
-        can.setStrokeColorRGB(0.8, 0.8, 0.8)
-        can.setLineWidth(1)
-        can.rect(30, height - 400, width - 60, 220, stroke=1, fill=0)
-        
-        can.setFillColorRGB(0, 0, 0)
-        can.setFont("Helvetica-Bold", 14)
-        can.drawString(50, height - 180, "Digital Signature:")
-        
-        # Add signature image
         try:
-            # Decode base64 signature
             signature_data = signature_base64.split(',')[1] if ',' in signature_base64 else signature_base64
             signature_bytes = base64.b64decode(signature_data)
             signature_image = Image.open(io.BytesIO(signature_bytes))
-            
-            # Save temp signature
             temp_sig = io.BytesIO()
             signature_image.save(temp_sig, format='PNG')
             temp_sig.seek(0)
-            
-            # Center the signature
-            sig_width = 300
-            sig_height = 120
+            sig_width, sig_height = 250, 100
             x_pos = (width - sig_width) / 2
-            can.drawImage(ImageReader(temp_sig), x_pos, height - 350, width=sig_width, height=sig_height, preserveAspectRatio=True, mask='auto')
-            
+            can.drawImage(ImageReader(temp_sig), x_pos, y - sig_height - 5, width=sig_width, height=sig_height, preserveAspectRatio=True, mask='auto')
+            y -= sig_height + 15
         except Exception as e:
             print(f"⚠️ Error adding signature image: {e}")
-            can.setFont("Helvetica", 10)
-            can.drawString(50, height - 250, "[Signature image could not be rendered]")
+            can.setFont("Helvetica", 9)
+            can.drawString(60, y - 20, "[Signature image could not be rendered]")
+            y -= 30
         
-        # Certificate hash section
-        can.setFont("Helvetica-Bold", 10)
-        can.drawString(50, height - 430, "Digital Certificate (SHA-256):")
+        # ─── Cryptographic Hash ───
+        y -= 10
+        can.setFont("Helvetica-Bold", 11)
+        can.setFillColorRGB(0, 0, 0)
+        can.drawString(50, y, "3. CRYPTOGRAPHIC VERIFICATION")
+        can.line(50, y - 3, width - 50, y - 3)
+        y -= 18
+        can.setFont("Helvetica-Bold", 9)
+        can.drawString(60, y, "SHA-256 Hash:")
         can.setFont("Courier", 7)
-        
-        # Split hash into multiple lines for readability
-        hash_line1 = certificate_hash[:32]
-        hash_line2 = certificate_hash[32:]
-        can.drawString(50, height - 445, hash_line1)
-        can.drawString(50, height - 455, hash_line2)
-        
-        # Verification notice
+        can.drawString(160, y, certificate_hash[:32])
+        y -= 12
+        can.drawString(160, y, certificate_hash[32:])
+        y -= 18
         can.setFont("Helvetica", 8)
         can.setFillColorRGB(0.3, 0.3, 0.3)
-        can.drawString(50, height - 480, "This document is cryptographically signed and tamper-evident.")
-        can.drawString(50, height - 493, "Any modification to this document will invalidate the digital signature.")
+        can.drawString(60, y, "This hash uniquely identifies the document contents at the time of signing.")
+        can.drawString(60, y - 11, "Any modification to this document will produce a different hash, proving tampering.")
         
-        # Footer
+        # ─── Section 65B Declaration ───
+        y -= 35
+        can.setFillColorRGB(0, 0, 0)
+        can.setFont("Helvetica-Bold", 11)
+        can.drawString(50, y, "4. CERTIFICATE UNDER SECTION 65B, BSA 2023")
+        can.line(50, y - 3, width - 50, y - 3)
+        y -= 18
+        
+        # Draw bordered declaration box
+        decl_lines = [
+            "I hereby certify that:",
+            "",
+            "(a) This electronic record was produced by the WizeSign system during the ordinary",
+            "    course of its regular operation, for the purpose of recording medical consent.",
+            "",
+            "(b) The information contained in this electronic record was supplied to the system",
+            "    in the ordinary course of its operation by the person named above.",
+            "",
+            "(c) At the time of creation of this electronic record, the computer system was",
+            "    operating properly and was not subject to any defect or malfunction.",
+            "",
+            "(d) The electronic record faithfully and accurately reproduces the information",
+            "    supplied to it, including the electronic signature.",
+            "",
+            f"Certificate generated on: {ist_generated}",
+            f"System: WizeSign Electronic Consent Platform",
+        ]
+        
+        box_height = len(decl_lines) * 11 + 10
+        can.setStrokeColorRGB(0.5, 0.5, 0.5)
+        can.setLineWidth(0.5)
+        can.rect(55, y - box_height - 2, width - 110, box_height + 5, stroke=1, fill=0)
+        
+        can.setFont("Helvetica", 8)
+        can.setFillColorRGB(0.1, 0.1, 0.1)
+        for line in decl_lines:
+            can.drawString(65, y, line)
+            y -= 11
+        
+        # ─── Footer ───
         can.setFont("Helvetica", 7)
         can.setFillColorRGB(0.5, 0.5, 0.5)
         can.drawString(50, 50, f"Document ID: {document_id}")
-        can.drawString(50, 40, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        can.drawString(50, 40, f"Generated: {ist_generated}")
+        can.drawString(50, 30, "This certificate is auto-generated and does not require a physical signature.")
         can.drawRightString(width - 50, 50, "Powered by WizeSign")
+        can.drawRightString(width - 50, 40, "Compliant with IT Act 2000 & BSA 2023")
     
     def get_download_path(self, document_id: str) -> Optional[Path]:
         """Get the path to a signed PDF if it exists"""

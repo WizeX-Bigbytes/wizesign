@@ -4,12 +4,13 @@ import { useAppStore } from '../store/useAppStore';
 import { useSubmitSignature, useDocumentByToken } from '../hooks/useAppQueries';
 import { AuditEvent, SmartField } from '../types';
 import { SignaturePad } from './SignaturePad';
-import { X, Loader2, AlertCircle } from 'lucide-react';
+import { X, Loader2, AlertCircle, Globe } from 'lucide-react';
 
 import { OTPVerification } from './patient/OTPVerification';
 import { PatientHeader } from './patient/PatientHeader';
 import { DocumentViewer } from './patient/DocumentViewer';
 import { StickyFooter } from './patient/StickyFooter';
+import { Language, translations } from '../utils/translations';
 
 import toast from 'react-hot-toast';
 
@@ -32,11 +33,13 @@ export const PatientView: React.FC = () => {
     const [signature, setSignature] = useState<string>('');
     const [agreed, setAgreed] = useState(false);
     const [identityConfirmed, setIdentityConfirmed] = useState(false);
+    const [dataPrivacyAgreed, setDataPrivacyAgreed] = useState(false);
     const [ipAddress, setIpAddress] = useState('Loading...');
     const [showSignModal, setShowSignModal] = useState(false);
     const [verificationStep, setVerificationStep] = useState<'START' | 'OTP' | 'VERIFIED'>('START');
     const [isProcessingOtp, setIsProcessingOtp] = useState(false);
     const [localFields, setLocalFields] = useState<SmartField[]>([]);
+    const [lang, setLang] = useState<Language>('en');
 
     // Sync localFields when consentForm.fields loads
     useEffect(() => {
@@ -159,17 +162,22 @@ export const PatientView: React.FC = () => {
     };
 
     const handleSubmit = () => {
-        if (!signature || !agreed || !identityConfirmed) return;
+        if (!signature || !agreed || !identityConfirmed || !dataPrivacyAgreed) return;
 
-        const timestamp = new Date().toISOString();
+        // Use IST timestamp for Section 63 (BSA 2023) compliance
+        const now = new Date();
+        const istTimestamp = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\//g, '-') + ' IST';
+        const isoTimestamp = now.toISOString();
+        const phoneNumber = patientDetails.phone || 'Not provided';
         const newAuditEvents: AuditEvent[] = [
-            { timestamp, action: 'IDENTITY_VERIFIED', actor: patientDetails.fullName, details: 'OTP verification completed via mobile' },
-            { timestamp, action: 'DOCUMENT_ACCESSED', actor: patientDetails.fullName, details: `IP: ${ipAddress}, User-Agent: ${navigator.userAgent.substring(0, 50)}` },
-            { timestamp, action: 'IDENTITY_CONFIRMED', actor: patientDetails.fullName, details: 'Signer confirmed their identity' },
-            { timestamp, action: 'E_SIGNATURE_CONSENT', actor: patientDetails.fullName, details: 'Consented to electronic signature use and terms' },
-            { timestamp, action: 'DOCUMENT_REVIEWED', actor: patientDetails.fullName, details: 'Document content reviewed by signer' },
-            { timestamp, action: 'SIGNATURE_APPLIED', actor: patientDetails.fullName, details: 'Electronic signature created and applied' },
-            { timestamp, action: 'SIGNATURE_SUBMITTED', actor: patientDetails.fullName, details: `Final submission with intent to sign, IP: ${ipAddress}` }
+            { timestamp: isoTimestamp, action: 'IDENTITY_VERIFIED', actor: patientDetails.fullName, details: `OTP verification completed via mobile: ${phoneNumber}` },
+            { timestamp: isoTimestamp, action: 'DOCUMENT_ACCESSED', actor: patientDetails.fullName, details: `IP: ${ipAddress}, User-Agent: ${navigator.userAgent}` },
+            { timestamp: isoTimestamp, action: 'IDENTITY_CONFIRMED', actor: patientDetails.fullName, details: `Signer confirmed their identity. Phone: ${phoneNumber}` },
+            { timestamp: isoTimestamp, action: 'E_SIGNATURE_CONSENT', actor: patientDetails.fullName, details: 'Consented to electronic signature use and terms' },
+            { timestamp: isoTimestamp, action: 'DPDP_CONSENT', actor: patientDetails.fullName, details: 'Acknowledged data collection and processing under DPDP Act 2023' },
+            { timestamp: isoTimestamp, action: 'DOCUMENT_REVIEWED', actor: patientDetails.fullName, details: `Document content reviewed by signer. IST: ${istTimestamp}` },
+            { timestamp: isoTimestamp, action: 'SIGNATURE_APPLIED', actor: patientDetails.fullName, details: 'Electronic signature created and applied' },
+            { timestamp: isoTimestamp, action: 'SIGNATURE_SUBMITTED', actor: patientDetails.fullName, details: `Final submission with intent to sign. IP: ${ipAddress}, Phone: ${phoneNumber}, IST: ${istTimestamp}` }
         ];
 
         // Store update for immediate UI feedback
@@ -265,16 +273,25 @@ export const PatientView: React.FC = () => {
             <div className={`flex-1 w-full max-w-5xl mx-auto p-2 md:p-8 flex flex-col transition-all ${verificationStep !== 'VERIFIED' ? 'blur-md pointer-events-none select-none opacity-50 overflow-hidden h-screen' : ''}`}>
 
                 <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-                    <div>
-                        <h2 className="text-lg font-bold text-slate-900">Action Required</h2>
-                        <p className="text-slate-500 text-sm">Please review the document below and provide your signature.</p>
+                    <div className={lang === 'ml' ? "font-['Noto_Sans_Malayalam']" : ''}>
+                        <h2 className="text-lg font-bold text-slate-900">{translations[lang].actionRequired}</h2>
+                        <p className="text-slate-500 text-sm">{translations[lang].reviewAndSign}</p>
                     </div>
-                    <div className="flex gap-2 text-xs font-medium bg-blue-50 text-blue-700 px-3 py-2 rounded-lg items-center self-start">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                        </span>
-                        Awaiting Signature
+                    <div className="flex items-center gap-2.5 self-start">
+                        <button
+                            onClick={() => setLang(lang === 'en' ? 'ml' : 'en')}
+                            className="flex items-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 transition-colors shadow-sm"
+                        >
+                            <Globe className="w-3.5 h-3.5" />
+                            {lang === 'en' ? 'മലയാളം' : 'English'}
+                        </button>
+                        <div className="flex gap-2 text-xs font-medium bg-blue-50 text-blue-700 px-3 py-2 rounded-lg items-center">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                            </span>
+                            {translations[lang].awaitingSignature}
+                        </div>
                     </div>
                 </div>
 
@@ -297,9 +314,12 @@ export const PatientView: React.FC = () => {
                     onIdentityChange={setIdentityConfirmed}
                     agreed={agreed}
                     onAgreedChange={setAgreed}
+                    dataPrivacyAgreed={dataPrivacyAgreed}
+                    onDataPrivacyChange={setDataPrivacyAgreed}
                     onSubmit={handleSubmit}
                     isSubmitting={isSubmitting}
-                    canSubmit={!!(signature && agreed && identityConfirmed)}
+                    canSubmit={!!(signature && agreed && identityConfirmed && dataPrivacyAgreed)}
+                    lang={lang}
                 />
             )}
 

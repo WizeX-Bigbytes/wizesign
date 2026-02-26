@@ -419,6 +419,74 @@ async def get_document_by_token(
     return document
 
 
+@router.patch("/{document_id}/fields")
+async def update_document_fields(
+    document_id: str,
+    fields_data: DocumentUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_from_token)
+):
+    """
+    Update document fields. If the document is already signed, this automatically
+    invalidates the signature (IT Act 2000 compliance - Invalidation Protocol).
+    """
+    try:
+        doc_uuid = uuid.UUID(document_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid document ID")
+    
+    result = await db.execute(select(Document).where(Document.id == doc_uuid))
+    document = result.scalar_one_or_none()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    # Check if document was signed — if so, invalidate the signature
+    was_signed = document.status in (DocumentStatusEnum.SIGNED, DocumentStatusEnum.COMPLETED)
+    
+    # Apply field updates
+    if fields_data.fields is not None:
+        document.fields = [f.dict() for f in fields_data.fields]
+    if fields_data.procedure_name is not None:
+        document.procedure_name = fields_data.procedure_name
+    if fields_data.doctor_name is not None:
+        document.doctor_name = fields_data.doctor_name
+    if fields_data.clinic_name is not None:
+        document.clinic_name = fields_data.clinic_name
+    
+    # Invalidation protocol: strip signature if document was signed
+    if was_signed:
+        from datetime import timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
+        ist_now = datetime.now(IST).strftime('%d-%m-%Y %H:%M:%S IST')
+        
+        document.signature = None
+        document.signed_date = None
+        document.certificate_hash = None
+        document.certificate_issued_at = None
+        document.status = DocumentStatusEnum.SENT
+        
+        invalidation_event = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "action": "SIGNATURE_INVALIDATED",
+            "actor": current_user.name if current_user else "SYSTEM",
+            "details": f"Document fields modified after signing. Signature stripped and document requires re-signing. IST: {ist_now}"
+        }
+        if document.audit_trail:
+            document.audit_trail = [*document.audit_trail, invalidation_event]
+        else:
+            document.audit_trail = [invalidation_event]
+    
+    document.updated_at = datetime.utcnow()
+    await db.commit()
+    
+    return {
+        "id": str(document.id),
+        "status": document.status.value,
+        "signature_invalidated": was_signed,
+        "message": "Signature invalidated — document requires re-signing." if was_signed else "Fields updated successfully."
+    }
+
+
 @router.post("/{document_id}/sign", response_model=DocumentDetailResponse)
 async def submit_signature(
     document_id: str,
@@ -519,7 +587,9 @@ async def submit_signature(
             signed_date=document.signed_date,
             certificate_hash=document.certificate_hash,
             original_pdf_path=document.file_path,  # Use stored file path
-            signature_fields=document.fields  # Pass signature field positions
+            signature_fields=document.fields,  # Pass signature field positions
+            ip_address=document.ip_address,
+            phone_number=document.patient.phone if document.patient else None
         )
         
         # Update document with signed PDF path

@@ -74,6 +74,7 @@ class SmartField(BaseModel):
     value: Optional[str] = None
     fontSize: Optional[int] = None
     fontWeight: Optional[str] = None
+    fontFamily: Optional[str] = None
     textAlign: Optional[str] = None
 
 
