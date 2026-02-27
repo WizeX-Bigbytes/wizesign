@@ -9,9 +9,9 @@ class Settings(BaseSettings):
     
     FRONTEND_URL: str
     
-    # WizeChat Integration
-    WIZECHAT_API_URL: str
-    WIZECHAT_API_KEY: str
+    # WizeChat Integration (Optional for local dev, usually overridden per-tenant)
+    WIZECHAT_API_URL: str | None = None
+    WIZECHAT_API_KEY: str | None = None
     
     APP_NAME: str = "WizeSign"
     APP_ENV: str = "development"
