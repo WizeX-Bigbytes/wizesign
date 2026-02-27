@@ -824,16 +824,10 @@ async def send_otp(
             print(f"🔍 Dev mode check: {settings.APP_ENV == 'development'}")
             
             if inbox_id:
-                # In development mode, skip actual WizeChat API call
                 if settings.APP_ENV == "development":
                     print(f"\n🔐 DEV MODE - OTP for {document.patient.phone}: {otp_code}")
                     print(f"   Document: {document.procedure_name}")
                     print(f"   Patient: {document.patient.full_name}")
-                    return {
-                        "success": True, 
-                        "message": "OTP sent successfully (DEV MODE - check server logs)",
-                        "dev_otp": otp_code  # Only in dev mode
-                    }
                 
                 # In production, send via WizeChat
                 await wizechat_service.send_otp(
@@ -846,11 +840,6 @@ async def send_otp(
                 )
                 
                 response = {"success": True, "message": "OTP sent successfully"}
-                
-                # Setup auto-fill for testing if enabled
-                if settings.APP_ENV == "development":
-                    print(f"🔐 DEV MODE - Including OTP in response for auto-fill")
-                    response["dev_otp"] = otp_code
                 
                 return response
             else:
@@ -1124,7 +1113,7 @@ async def send_document_via_whatsapp(
         return WhatsAppResponse(
             success=True,
             message="WhatsApp message sent successfully",
-            message_id=wizechat_response.get("message_id")
+            message_id=wizechat_response.get("whatsapp_message_id") or wizechat_response.get("message_id") or ""
         )
         
     except HTTPException:
