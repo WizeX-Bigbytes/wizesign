@@ -45,14 +45,19 @@ export const StickyFooter: React.FC<StickyFooterProps> = ({
     canSubmit,
     lang
 }) => {
+    const [isExpanded, setIsExpanded] = React.useState(false);
     const t = translations[lang];
     const fontClass = lang === 'ml' ? "font-['Noto_Sans_Malayalam']" : '';
 
     return (
         <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.08)] z-40 safe-area-pb transition-all animate-in slide-in-from-bottom duration-300">
-            <div className="max-w-4xl mx-auto px-4 py-5 md:px-6 md:py-5 flex flex-col gap-5">
-                {/* Consent checkboxes */}
-                <div className={`flex flex-col gap-4 ${fontClass}`}>
+            <div className="max-w-4xl mx-auto px-4 py-4 md:px-6 md:py-5 flex flex-col gap-4">
+
+                {/* Collapsible Consent Checkboxes */}
+                <div
+                    className={`flex flex-col gap-4 ${fontClass} transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-[500px] opacity-100 py-1' : 'max-h-0 opacity-0'
+                        }`}
+                >
                     {/* 1. Identity confirmation */}
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <Checkbox checked={identityConfirmed} onChange={onIdentityChange} />
@@ -82,14 +87,33 @@ export const StickyFooter: React.FC<StickyFooterProps> = ({
                     </label>
                 </div>
 
-                {/* Submit button — full width */}
-                <button
-                    onClick={onSubmit}
-                    disabled={!canSubmit || isSubmitting}
-                    className={`w-full bg-slate-900 hover:bg-black text-white py-4 rounded-xl font-bold text-[15px] shadow-lg shadow-slate-900/20 disabled:opacity-40 disabled:shadow-none flex items-center justify-center gap-2.5 transition-all transform active:scale-[0.99] ${fontClass}`}
-                >
-                    {isSubmitting ? <Loader2 className="animate-spin w-5 h-5" /> : t.agreeAndSign}
-                </button>
+                {/* Primary Action Button */}
+                {!isExpanded ? (
+                    <button
+                        onClick={() => setIsExpanded(true)}
+                        className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold text-[15px] shadow-lg shadow-blue-600/20 flex items-center justify-center transition-all transform active:scale-[0.99] ${fontClass}`}
+                        style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+                    >
+                        Review Terms to Sign
+                    </button>
+                ) : (
+                    <div className="flex flex-col gap-2">
+                        <button
+                            onClick={onSubmit}
+                            disabled={!canSubmit || isSubmitting}
+                            className={`w-full bg-slate-900 hover:bg-black text-white py-3.5 rounded-xl font-bold text-[15px] shadow-lg shadow-slate-900/20 disabled:opacity-40 disabled:shadow-none flex items-center justify-center gap-2.5 transition-all transform active:scale-[0.99] ${fontClass}`}
+                            style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+                        >
+                            {isSubmitting ? <Loader2 className="animate-spin w-5 h-5" /> : t.agreeAndSign}
+                        </button>
+                        <button
+                            onClick={() => setIsExpanded(false)}
+                            className="text-xs text-slate-500 hover:text-slate-700 py-2 font-medium transition-colors"
+                        >
+                            Hide Terms
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
