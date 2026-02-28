@@ -13,7 +13,7 @@ export const PatientHeader: React.FC<PatientHeaderProps> = ({ clinicName, isVeri
                 <div className="bg-blue-600 p-1.5 rounded-lg">
                     <Zap className="w-4 h-4 text-white fill-current" />
                 </div>
-                <span className="font-bold text-base md:text-xl text-slate-900 tracking-tight">wizex</span>
+                <span className="font-bold text-base md:text-xl text-slate-900 tracking-tight">SignWize</span>
             </div>
             <div className="flex items-center gap-3">
                 <div className="hidden md:block text-right">

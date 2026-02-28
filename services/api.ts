@@ -80,10 +80,25 @@ export const api = {
     return result;
   },
 
-  listDocuments: async (statusFilter?: string) => {
-    const url = statusFilter 
-      ? `${API_BASE_URL}/documents/?status_filter=${statusFilter}`
-      : `${API_BASE_URL}/documents/`;
+  listDocuments: async (options?: { statusFilter?: string, patientId?: string, search?: string }) => {
+    let url = `${API_BASE_URL}/documents/`;
+    const params = new URLSearchParams();
+    
+    if (options?.statusFilter && options.statusFilter !== 'ALL') {
+      params.append('status_filter', options.statusFilter);
+    }
+    if (options?.patientId) {
+      params.append('patient_id', options.patientId);
+    }
+    if (options?.search) {
+      params.append('search', options.search);
+    }
+    
+    const queryString = params.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+
     const response = await fetch(url, {
       headers: getAuthHeaders()
     });
@@ -216,6 +231,22 @@ export const api = {
       throw new Error(errorData.detail || 'Failed to delete template');
     }
     return true;
+  },
+
+  // ============ Super Admin ============
+  getSuperAdminStats: async () => {
+    const response = await fetch(`${API_BASE_URL}/superadmin/dashboard-stats`, { headers: getAuthHeaders() });
+    return handleResponse<any>(response);
+  },
+
+  listAllHospitals: async (skip = 0, limit = 50) => {
+    const response = await fetch(`${API_BASE_URL}/superadmin/hospitals?skip=${skip}&limit=${limit}`, { headers: getAuthHeaders() });
+    return handleResponse<any[]>(response);
+  },
+
+  listAllUsers: async (skip = 0, limit = 50) => {
+    const response = await fetch(`${API_BASE_URL}/superadmin/users?skip=${skip}&limit=${limit}`, { headers: getAuthHeaders() });
+    return handleResponse<any[]>(response);
   },
 
   resolveUrl: (url: string) => {

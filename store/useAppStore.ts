@@ -34,6 +34,11 @@ interface AppState {
   currentUser: UserProfile | null;
   setCurrentHospital: (hospital: HospitalProfile | null) => void;
   currentHospital: HospitalProfile | null;
+
+  // Theme Support
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  setTheme: (theme: 'light' | 'dark') => void;
 }
 
 export interface UserProfile {
@@ -81,6 +86,11 @@ export const useAppStore = create<AppState>((set) => ({
   patientDetails: { ...INITIAL_PATIENT },
   consentForm: { ...INITIAL_FORM },
   activeFieldId: null,
+    
+  // Theme logic
+  theme: 'light',
+  toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+  setTheme: (theme) => set({ theme }),
 
   setStep: (step) => set({ currentStep: step }),
   
@@ -185,6 +195,9 @@ export const useAppStore = create<AppState>((set) => ({
     currentStep: AppStep.LANDING,
     patientDetails: { ...INITIAL_PATIENT },
     consentForm: { ...INITIAL_FORM },
-    activeFieldId: null
+    activeFieldId: null,
+    theme: 'light',
+    toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+    setTheme: (theme) => set({ theme }),
   })
 }));

@@ -15,9 +15,17 @@ import uuid
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
+# Replaces buggy passlib CryptContext
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'), 
+            hashed_password.encode('utf-8')
+        )
+    except Exception:
+        return False
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT access token"""
@@ -69,9 +77,14 @@ async def get_current_user_from_token(authorization: str = Header(None), db: Asy
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id = payload.get("sub")
         hospital_id = payload.get("hospital_id")
+        role = payload.get("role")
         
-        if not user_id or not hospital_id:
+        if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token structure")
+            
+        # Only require hospital_id if not a super admin
+        if not hospital_id and role != "SUPERADMIN":
+            raise HTTPException(status_code=401, detail="Invalid token structure: missing hospital config")
         
         result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
         user = result.scalar_one_or_none()
@@ -111,7 +124,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if not pwd_context.verify(form_data.password, user.hashed_password):
+    if not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -121,7 +134,13 @@ async def login(
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": str(user.id)}, expires_delta=access_token_expires
+        data={
+            "sub": str(user.id),
+            "email": user.email,
+            "role": user.role.value,
+            "hospital_id": str(user.hospital_id) if user.hospital_id else None
+        }, 
+        expires_delta=access_token_expires
     )
     
     return {"access_token": access_token, "token_type": "bearer"}

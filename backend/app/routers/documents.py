@@ -967,23 +967,59 @@ async def list_documents(
     skip: int = 0,
     limit: int = 50,
     status_filter: str = None,
+    patient_id: str = None,
+    search: str = None,
     current_user: User = Depends(get_current_user_from_token),
     db: AsyncSession = Depends(get_db)
 ):
     """
     List all documents for the doctor's hospital (for doctor dashboard).
+    Includes optional filters for status, patient_id, and general keyword search.
     """
     
     query = select(Document).options(selectinload(Document.patient)).where(
         Document.hospital_id == current_user.hospital_id
     )
     
+    # 1. Status Filter
     if status_filter:
         try:
             status_enum = DocumentStatusEnum[status_filter.upper()]
             query = query.where(Document.status == status_enum)
         except KeyError:
             pass  # Invalid status filter, ignore
+            
+    # 2. Patient ID Filter (Support both internal UUID and WizeFlow external_id)
+    if patient_id:
+        # Join Patient to allow filtering by its columns
+        # Check if it was already joined to avoid duplicate joins
+        if not search: 
+            query = query.join(Document.patient)
+            
+        uuid_condition = None
+        try:
+            patient_uuid = uuid.UUID(patient_id)
+            uuid_condition = (Patient.id == patient_uuid)
+        except ValueError:
+            pass  # It's an external_id string like 'p_test', not a UUID
+            
+        if uuid_condition is not None:
+            # Match either UUID or external_id
+            query = query.where(uuid_condition | (Patient.external_id == patient_id))
+        else:
+            # Only match external_id
+            query = query.where(Patient.external_id == patient_id)
+            
+    # 3. Text Search (Procedure Name, Doctor Name, or Patient Name)
+    if search:
+        search_term = f"%{search}%"
+        # Join Patient to search their fields as well
+        query = query.join(Document.patient).where(
+            (Document.procedure_name.ilike(search_term)) |
+            (Document.doctor_name.ilike(search_term)) |
+            (Patient.full_name.ilike(search_term)) |
+            (Patient.email.ilike(search_term))
+        ).distinct()
     
     query = query.offset(skip).limit(limit).order_by(Document.created_at.desc())
     

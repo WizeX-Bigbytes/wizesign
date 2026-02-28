@@ -8,7 +8,7 @@ import { TemplateList } from './doctor/TemplateList';
 import { CreateTemplateModal } from './doctor/CreateTemplateModal';
 import { DocumentsList } from './doctor/DocumentsList';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
-import { FileText, FolderOpen } from 'lucide-react';
+import { FileText, FolderOpen, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDisplayDate } from '../utils/dateUtils';
 
@@ -25,8 +25,10 @@ export const DoctorDashboard: React.FC = () => {
     setDocumentFile, updateConsentForm, setFields, patientDetails, updatePatientDetails
   } = useAppStore();
 
-  const [viewMode, setViewMode] = useState<'templates' | 'documents'>('templates');
+  const viewMode = searchParams.get('view') === 'documents' ? 'documents' : 'templates';
   const [activeTemplateFilter, setActiveTemplateFilter] = useState<string>('');
+  const [activeSearchQuery, setActiveSearchQuery] = useState<string>('');
+  const [activeStatusFilter, setActiveStatusFilter] = useState<string>('ALL');
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   const [wizechatStatus, setWizechatStatus] = useState<any>(null);
@@ -72,23 +74,37 @@ export const DoctorDashboard: React.FC = () => {
     }
   }, [searchParams, updatePatientDetails]);
 
-  // Load documents when switching to documents view
+  // Load documents when view mode changes or filters update
   useEffect(() => {
     if (viewMode === 'documents') {
       loadDocuments();
     }
-  }, [viewMode]);
+  }, [viewMode, activeTemplateFilter, activeSearchQuery]); // Removed activeTemplateFilter from triggering directly unless it changes
 
   const loadDocuments = async () => {
     setIsLoadingDocuments(true);
     try {
-      const docs = await api.listDocuments();
+      // Use the active template filter if set, otherwise use the search query
+      const searchQuery = activeTemplateFilter || activeSearchQuery;
+      const docs = await api.listDocuments({
+        statusFilter: activeStatusFilter,
+        search: searchQuery
+      });
       setDocuments(docs);
     } catch (error) {
       console.error('Failed to load documents:', error);
     } finally {
       setIsLoadingDocuments(false);
     }
+  };
+
+  const handleSearchChange = (query: string, status: string) => {
+    // If user types in the search box, clear the hardcoded template filter
+    if (query !== activeTemplateFilter && activeTemplateFilter !== '') {
+      setActiveTemplateFilter('');
+    }
+    setActiveSearchQuery(query);
+    setActiveStatusFilter(status);
   };
 
   const handleViewDocument = (documentId: string) => {
@@ -255,76 +271,42 @@ export const DoctorDashboard: React.FC = () => {
     }
   };
 
+  const isDark = useAppStore(state => state.theme === 'dark');
+
   return (
-    <div className="h-full flex flex-col">
+    <div className={`h-full flex flex-col transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
       {/* WizeChat Configuration Banner */}
       {wizechatStatus && !wizechatStatus.configured && showWizechatBanner && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
-          <div className="max-w-6xl mx-auto px-4 md:px-6 py-3">
-            <div className="flex items-start gap-3 justify-between">
-              <div className="flex items-start gap-3">
-                <div className="bg-amber-100 p-2 rounded-lg shrink-0 mt-0.5">
-                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-amber-900 text-sm">WizeChat Not Configured</h3>
-                  <p className="text-amber-800 text-xs mt-0.5">
-                    {wizechatStatus.message}. Configure WizeChat to send documents via WhatsApp.
-                  </p>
-                  <button
-                    onClick={() => navigate('/settings')}
-                    className="mt-2 text-xs font-semibold text-amber-700 hover:text-amber-900 underline"
-                  >
-                    Configure Now →
-                  </button>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowWizechatBanner(false)}
-                className="text-amber-600 hover:text-amber-800 p-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        <div className={`mx-4 mt-2 mb-6 p-4 rounded-2xl border flex items-center justify-between animate-in slide-in-from-top-2 duration-500 ${isDark ? 'bg-amber-950/20 border-amber-900/50 text-amber-200' : 'bg-amber-50 border-amber-100 text-amber-800 shadow-sm'
+          }`}>
+          <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-amber-900/40 text-amber-400' : 'bg-amber-100 text-amber-600'}`}>
+              <AlertCircle className="w-5 h-5" />
             </div>
+            <div>
+              <p className="font-bold text-sm">Action Required: WizeChat Not Configured</p>
+              <p className={`text-xs mt-0.5 font-medium opacity-80`}>Set up your WizeChat API details in settings to enable WhatsApp document sending.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/doctor/settings')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${isDark ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-amber-900 text-white hover:bg-amber-950 shadow-md shadow-amber-900/20'
+                }`}
+            >
+              Configure Now
+            </button>
+            <button
+              onClick={() => setShowWizechatBanner(false)}
+              className="p-2 rounded-lg hover:bg-black/5 opacity-40 hover:opacity-100 transition-all font-bold"
+            >
+              ✕
+            </button>
           </div>
         </div>
       )}
 
-      {/* View Mode Toggle - Aligned with content */}
-      <div className="max-w-6xl w-full mx-auto px-4 md:px-6 pt-4 shrink-0">
-        <div className="flex gap-1 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/60 w-fit mb-2">
-          <button
-            onClick={() => setViewMode('templates')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'templates'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-              : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-              }`}
-          >
-            <FolderOpen className="w-4 h-4" />
-            Templates
-          </button>
-          <button
-            onClick={() => {
-              setViewMode('documents');
-              setActiveTemplateFilter('');
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${viewMode === 'documents'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-              : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-              }`}
-          >
-            <FileText className="w-4 h-4" />
-            Documents
-            {documents.length > 0 && (
-              <span className="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded text-[10px] ml-1">{documents.length}</span>
-            )}
-          </button>
-        </div>
-      </div>
+
 
       {/* Conditional View */}
       <div className="flex-1 min-h-0">
@@ -350,7 +332,7 @@ export const DoctorDashboard: React.FC = () => {
               }}
               onViewDocuments={(name) => {
                 setActiveTemplateFilter(name);
-                setViewMode('documents');
+                navigate('/doctor/dashboard?view=documents');
               }}
               onDuplicate={handleDuplicateTemplate}
             />
@@ -366,7 +348,8 @@ export const DoctorDashboard: React.FC = () => {
             documents={documents}
             onViewDocument={handleViewDocument}
             isLoading={isLoadingDocuments}
-            initialSearchQuery={activeTemplateFilter}
+            initialSearchQuery={activeTemplateFilter || activeSearchQuery}
+            onSearchChange={handleSearchChange}
           />
         )}
       </div>

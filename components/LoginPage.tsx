@@ -20,7 +20,19 @@ export const LoginPage: React.FC = () => {
             const response = await api.login(email, password);
             localStorage.setItem('access_token', response.access_token);
             toast.success('Login successful!');
-            navigate('/doctor/dashboard');
+
+            // Fetch user profile to determine routing
+            try {
+                const user = await api.getMe();
+                if (user.role === 'SUPERADMIN') {
+                    navigate('/superadmin');
+                } else {
+                    navigate('/doctor/dashboard');
+                }
+            } catch (roleError) {
+                console.error('Failed to fetch user role, defaulting to doctor dashboard:', roleError);
+                navigate('/doctor/dashboard');
+            }
         } catch (err: any) {
             console.error('Login error:', err);
             setError(err.response?.data?.detail || 'Invalid email or password');
@@ -51,7 +63,7 @@ export const LoginPage: React.FC = () => {
                         <div className="bg-blue-600 p-2 rounded-xl">
                             <Zap className="w-8 h-8 text-white fill-current" />
                         </div>
-                        <span className="font-bold text-3xl text-slate-900">wizex</span>
+                        <span className="font-bold text-3xl text-slate-900">SignWize</span>
                     </div>
                     <p className="text-slate-600 font-medium">Doctor Portal</p>
                 </div>
@@ -61,14 +73,16 @@ export const LoginPage: React.FC = () => {
                     <h2 className="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h2>
                     <p className="text-slate-600 mb-6">Sign in to continue to your dashboard</p>
 
-                    {/* SSO Login Button */}
-                    <button
-                        onClick={handleSSOLogin}
-                        className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl mb-6"
-                    >
-                        <Zap className="w-5 h-5 fill-current" />
-                        Continue with WizeFlow
-                    </button>
+                    {/* SSO Login Button (Development Only) */}
+                    {import.meta.env.DEV && (
+                        <button
+                            onClick={handleSSOLogin}
+                            className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl mb-6"
+                        >
+                            <Zap className="w-5 h-5 fill-current" />
+                            Continue with WizeFlow (Test SSO)
+                        </button>
+                    )}
 
                     {/* Divider */}
                     <div className="relative mb-6">
@@ -138,7 +152,7 @@ export const LoginPage: React.FC = () => {
                     {/* Footer */}
                     <p className="mt-6 text-center text-sm text-slate-600">
                         Need access?{' '}
-                        <a href="mailto:support@wizex.com" className="text-blue-600 hover:text-blue-700 font-semibold">
+                        <a href="mailto:support@signwize.com" className="text-blue-600 hover:text-blue-700 font-semibold">
                             Contact Support
                         </a>
                     </p>

@@ -11,8 +11,12 @@ import { SSOHandler } from './components/SSOHandler';
 import { SettingsPage } from './components/SettingsPage';
 import { DocumentDetailView } from './components/DocumentDetailView';
 import { ProtectedRoute } from './components/ProtectedRoute';
-
 import { Toaster } from 'react-hot-toast';
+import { SuperAdminRoute } from './components/superadmin/SuperAdminRoute';
+import { SuperAdminLayout } from './components/superadmin/SuperAdminLayout';
+import { SuperAdminDashboard } from './components/superadmin/SuperAdminDashboard';
+import { HospitalManager } from './components/superadmin/HospitalManager';
+import { UserManager } from './components/superadmin/UserManager';
 
 const queryClient = new QueryClient();
 
@@ -23,6 +27,18 @@ const App: React.FC = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LoginPage />} />
+
+          {/* Super Admin Routes */}
+          <Route path="/superadmin" element={
+            <SuperAdminRoute>
+              <SuperAdminLayout />
+            </SuperAdminRoute>
+          }>
+            <Route path="dashboard" element={<SuperAdminDashboard />} />
+            <Route path="hospitals" element={<HospitalManager />} />
+            <Route path="users" element={<UserManager />} />
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
 
           <Route path="/doctor" element={
             <ProtectedRoute>

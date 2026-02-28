@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { FileText, Eye, Clock, CheckCircle, Send, AlertCircle, Search, Filter } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, Eye, Clock, CheckCircle, Send, AlertCircle, Search, Filter, MoreVertical, FileSignature, Sun, Moon, Calendar, ChevronRight } from 'lucide-react';
+import { useAppStore } from '../../store/useAppStore';
 import { formatDisplayDate, formatDisplayDateTime } from '../../utils/dateUtils';
 
 interface Document {
@@ -22,57 +23,74 @@ interface DocumentsListProps {
     onViewDocument: (documentId: string) => void;
     isLoading?: boolean;
     initialSearchQuery?: string;
+    onSearchChange: (query: string, status: string) => void;
 }
 
 export const DocumentsList: React.FC<DocumentsListProps> = ({
     documents,
     onViewDocument,
     isLoading,
-    initialSearchQuery
+    initialSearchQuery,
+    onSearchChange
 }) => {
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
 
-    const getStatusColor = (status: string) => {
+    // Notify parent of filter changes with debounce for search
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            onSearchChange(searchQuery, statusFilter);
+        }, 400); // 400ms debounce
+        return () => clearTimeout(timeoutId);
+    }, [searchQuery, statusFilter, onSearchChange]);
+
+    const isDark = useAppStore(state => state.theme === 'dark');
+
+    const getStatusStyle = (status: string) => {
         switch (status) {
             case 'SIGNED':
             case 'COMPLETED':
-                return 'text-green-700 bg-green-50 border-green-200';
+                return {
+                    bg: isDark ? 'bg-emerald-950/30' : 'bg-emerald-50',
+                    text: isDark ? 'text-emerald-400' : 'text-emerald-700',
+                    border: isDark ? 'border-emerald-800/50' : 'border-emerald-200/60',
+                    dot: 'bg-emerald-500',
+                    icon: <CheckCircle className="w-3.5 h-3.5" />
+                };
             case 'VIEWED':
-                return 'text-blue-700 bg-blue-50 border-blue-200';
+                return {
+                    bg: isDark ? 'bg-blue-950/30' : 'bg-blue-50',
+                    text: isDark ? 'text-blue-400' : 'text-blue-700',
+                    border: isDark ? 'border-blue-800/50' : 'border-blue-200/60',
+                    dot: 'bg-blue-500',
+                    icon: <Eye className="w-3.5 h-3.5" />
+                };
             case 'SENT':
-                return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+                return {
+                    bg: isDark ? 'bg-amber-950/30' : 'bg-amber-50',
+                    text: isDark ? 'text-amber-400' : 'text-amber-700',
+                    border: isDark ? 'border-amber-800/50' : 'border-amber-200/60',
+                    dot: 'bg-amber-500',
+                    icon: <Send className="w-3.5 h-3.5" />
+                };
             case 'EXPIRED':
-                return 'text-red-700 bg-red-50 border-red-200';
+                return {
+                    bg: isDark ? 'bg-red-950/30' : 'bg-red-50',
+                    text: isDark ? 'text-red-400' : 'text-red-700',
+                    border: isDark ? 'border-red-800/50' : 'border-red-200/60',
+                    dot: 'bg-red-500',
+                    icon: <AlertCircle className="w-3.5 h-3.5" />
+                };
             default:
-                return 'text-slate-700 bg-slate-50 border-slate-200';
+                return {
+                    bg: isDark ? 'bg-slate-900/50' : 'bg-slate-50',
+                    text: isDark ? 'text-slate-400' : 'text-slate-700',
+                    border: isDark ? 'border-slate-800/50' : 'border-slate-200/60',
+                    dot: isDark ? 'bg-slate-600' : 'bg-slate-400',
+                    icon: <Clock className="w-3.5 h-3.5" />
+                };
         }
     };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'SIGNED':
-            case 'COMPLETED':
-                return <CheckCircle className="w-4 h-4" />;
-            case 'VIEWED':
-                return <Eye className="w-4 h-4" />;
-            case 'SENT':
-                return <Send className="w-4 h-4" />;
-            case 'EXPIRED':
-                return <AlertCircle className="w-4 h-4" />;
-            default:
-                return <Clock className="w-4 h-4" />;
-        }
-    };
-
-    const filteredDocuments = documents.filter(doc => {
-        const matchesStatus = statusFilter === 'ALL' || doc.status === statusFilter;
-        const matchesSearch =
-            doc.procedure_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            doc.patient.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (doc.patient.email && doc.patient.email.toLowerCase().includes(searchQuery.toLowerCase()));
-        return matchesStatus && matchesSearch;
-    });
 
     const statusCounts = {
         ALL: documents.length,
@@ -82,146 +100,223 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
     };
 
     return (
-        <div className="max-w-6xl mx-auto h-full flex flex-col relative px-4 md:px-6">
-            {/* Header & Controls */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 shrink-0 pt-2">
+        <div className={`w-full h-full flex flex-col relative px-2 md:px-4 pt-2 pb-8 transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 shrink-0 transition-opacity">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Sent Documents</h1>
-                    <p className="text-slate-500 text-sm mt-1">Track status and view signed consent forms</p>
+                    <h1 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>Sent Documents</h1>
+                    <p className="text-slate-500 text-sm mt-1">Track and manage consent forms sent to patients</p>
                 </div>
-
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="relative w-full md:w-auto group">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                         <input
                             type="text"
-                            placeholder="Search patient or document..."
+                            placeholder="Search patient or procedure..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full md:w-64 pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white shadow-sm transition-all"
+                            className={`w-full md:w-64 pl-9 pr-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all ${isDark ? 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-600' : 'bg-white border-slate-200 text-slate-900'
+                                }`}
                         />
                     </div>
                 </div>
             </div>
 
-            {/* Status Tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-4 border-b border-slate-100 mb-6 shrink-0">
-                {(['ALL', 'SENT', 'VIEWED', 'SIGNED'] as const).map((status) => (
+            {/* Main Content Card */}
+            <div className={`flex-1 flex flex-col min-h-0 border rounded-2xl overflow-hidden shadow-sm shadow-slate-200/50 ${isDark ? 'bg-slate-900 border-slate-800 shadow-black/40' : 'bg-white border-slate-200'
+                }`}>
+                {/* Stats / Filters Header */}
+                <div className={`p-1.5 border-b flex flex-wrap items-center gap-2 overflow-x-auto scrollbar-hide ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50/50 border-slate-100'
+                    }`}>
                     <button
-                        key={status}
-                        onClick={() => setStatusFilter(status)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-all ${statusFilter === status
-                            ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10'
-                            : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                        onClick={() => setStatusFilter('ALL')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${statusFilter === 'ALL'
+                            ? (isDark ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'bg-white text-slate-900 shadow-sm border border-slate-200/60')
+                            : (isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50')
                             }`}
                     >
-                        {status === 'ALL' && <Filter className="w-3.5 h-3.5" />}
-                        {status === 'SENT' && <Send className="w-3.5 h-3.5" />}
-                        {status === 'VIEWED' && <Eye className="w-3.5 h-3.5" />}
-                        {status === 'SIGNED' && <CheckCircle className="w-3.5 h-3.5" />}
-                        {status}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusFilter === status ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                            }`}>
-                            {statusCounts[status]}
+                        All Documents
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusFilter === 'ALL' ? (isDark ? 'bg-blue-500' : 'bg-slate-100') : (isDark ? 'bg-slate-800' : 'bg-slate-200/60')}`}>
+                            {statusCounts.ALL}
                         </span>
                     </button>
-                ))}
-            </div>
+                    {['SENT', 'VIEWED', 'SIGNED'].map(status => (
+                        <button
+                            key={status}
+                            onClick={() => setStatusFilter(status)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${statusFilter === status
+                                ? (isDark ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'bg-white text-slate-900 shadow-sm border border-slate-200/60')
+                                : (isDark ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50')
+                                }`}
+                        >
+                            {status.charAt(0) + status.slice(1).toLowerCase()}
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusFilter === status ? (isDark ? 'bg-blue-500' : 'bg-slate-100') : (isDark ? 'bg-slate-800' : 'bg-slate-200/60')}`}>
+                                {statusCounts[status as keyof typeof statusCounts]}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+                <div className="overflow-x-auto min-h-0 flex-1">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className={`text-[11px] uppercase tracking-[0.1em] font-bold ${isDark ? 'text-slate-500 border-slate-800' : 'text-slate-400 border-slate-100'}`}>
+                                <th className="px-8 py-5 border-b font-bold">Document</th>
+                                <th className="px-8 py-5 border-b font-bold">Patient</th>
+                                <th className="px-8 py-5 border-b font-bold">Status</th>
+                                <th className="px-8 py-5 border-b font-bold">Timeline</th>
+                                <th className="px-8 py-5 border-b font-bold text-right"></th>
+                            </tr>
+                        </thead>
 
-            <div className="flex-1 overflow-y-auto min-h-0 -mx-4 px-4 pb-6">
-                {/* Loading State */}
-                {isLoading && (
-                    <div className="flex items-center justify-center py-20">
-                        <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-                    </div>
-                )}
-
-                {/* Empty States */}
-                {!isLoading && filteredDocuments.length === 0 && (
-                    <div className="text-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-4 border border-slate-100">
-                            <FileText className="w-8 h-8 text-slate-300" />
-                        </div>
-                        <h3 className="text-slate-900 font-bold text-lg mb-1">No documents found</h3>
-                        <p className="text-slate-500 text-sm">
-                            {searchQuery
-                                ? `No results matching "${searchQuery}"`
-                                : statusFilter === 'ALL'
-                                    ? "You haven't sent any documents yet."
-                                    : `No documents with status ${statusFilter}`
-                            }
-                        </p>
-                        {statusFilter !== 'ALL' && !searchQuery && (
-                            <button
-                                onClick={() => setStatusFilter('ALL')}
-                                className="mt-4 text-blue-600 text-sm font-bold hover:underline"
-                            >
-                                View All Documents
-                            </button>
-                        )}
-                    </div>
-                )}
-
-                {/* Documents Grid */}
-                {!isLoading && filteredDocuments.length > 0 && (
-                    <div className="grid gap-4 pb-8">
-                        {filteredDocuments.map((doc) => (
-                            <div
-                                key={doc.id}
-                                className="group bg-white rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-900/5 transition-all p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
-                            >
-                                <div className="flex items-start gap-4 min-w-0">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${doc.status === 'SIGNED' || doc.status === 'COMPLETED' ? 'bg-green-50 text-green-600' :
-                                        doc.status === 'VIEWED' ? 'bg-blue-50 text-blue-600' :
-                                            'bg-yellow-50 text-yellow-600'
-                                        }`}>
-                                        {getStatusIcon(doc.status)}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h3 className="font-bold text-slate-900 truncate">
-                                            {doc.procedure_name}
-                                        </h3>
-                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-1">
-                                            <div className="flex items-center gap-1.5 text-slate-600">
-                                                <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                                    {doc.patient.full_name.charAt(0)}
-                                                </div>
-                                                <span className="font-medium">{doc.patient.full_name}</span>
-                                            </div>
-
-                                            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-                                                <Clock className="w-3 h-3" />
-                                                <span>
-                                                    {doc.status === 'SIGNED' || doc.status === 'COMPLETED'
-                                                        ? doc.signed_date
-                                                            ? <>Signed: {formatDisplayDateTime(doc.signed_date)}</>
-                                                            : <>Sent: {formatDisplayDateTime(doc.created_at)}</>
-                                                        : doc.status === 'VIEWED'
-                                                            ? doc.link_accessed_at
-                                                                ? <>Viewed: {formatDisplayDateTime(doc.link_accessed_at)}</>
-                                                                : <>Sent: {formatDisplayDateTime(doc.created_at)}</>
-                                                            : <>Sent: {formatDisplayDateTime(doc.created_at)}</>}
-                                                </span>
-                                            </div>
+                        <tbody className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100/50'}`}>
+                            {/* Loading State inline */}
+                            {isLoading && (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-24 text-center">
+                                        <div className="flex flex-col items-center justify-center space-y-3">
+                                            <div className="animate-spin w-6 h-6 border-3 border-blue-600 border-t-transparent rounded-full"></div>
+                                            <span className="text-sm font-medium text-slate-500">Searching documents...</span>
                                         </div>
-                                    </div>
-                                </div>
+                                    </td>
+                                </tr>
+                            )}
 
-                                <div className="flex items-center gap-3 w-full sm:w-auto pl-14 sm:pl-0">
-                                    <div className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(doc.status)}`}>
-                                        <span>{doc.status}</span>
-                                    </div>
+                            {/* Empty State inline */}
+                            {!isLoading && documents.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-24 text-center">
+                                        <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center shadow-inner mb-4 border border-slate-100">
+                                                <FileText className="w-8 h-8 text-slate-300" />
+                                            </div>
+                                            <h3 className="text-slate-900 font-bold text-lg mb-1">No documents found</h3>
+                                            <p className="text-slate-500 text-sm">
+                                                {searchQuery
+                                                    ? `We couldn't find any documents matching "${searchQuery}".`
+                                                    : statusFilter === 'ALL'
+                                                        ? "You haven't sent any consent documents yet."
+                                                        : `There are no documents currently in the ${statusFilter} status.`
+                                                }
+                                            </p>
+                                            {statusFilter !== 'ALL' && !searchQuery && (
+                                                <button
+                                                    onClick={() => setStatusFilter('ALL')}
+                                                    className="mt-6 px-4 py-2 bg-slate-900 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+                                                >
+                                                    View All Documents
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
 
-                                    <button
+                            {/* Results */}
+                            {!isLoading && documents.map((doc) => {
+                                const statusStyle = getStatusStyle(doc.status);
+
+                                return (
+                                    <tr
+                                        key={doc.id}
+                                        className={`transition-all duration-200 group cursor-pointer ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/80'
+                                            }`}
                                         onClick={() => onViewDocument(doc.id)}
-                                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-blue-300 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-bold transition-all whitespace-nowrap"
                                     >
-                                        <Eye className="w-4 h-4" />
-                                        View Details
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                                        <td className="px-8 py-6 align-middle">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300 ${isDark ? 'bg-slate-800 text-blue-400' : 'bg-blue-50 text-blue-600'
+                                                    }`}>
+                                                    <FileText className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className={`font-bold text-sm line-clamp-1 transition-colors ${isDark ? 'text-slate-200 group-hover:text-white' : 'text-slate-900'
+                                                        }`}>
+                                                        {doc.procedure_name}
+                                                    </span>
+                                                    <span className={`text-[11px] font-medium tracking-wide mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'
+                                                        }`}>
+                                                        ID: {doc.id.split('-')[0].toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td className="px-8 py-6 align-middle">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border transition-all ${isDark
+                                                    ? 'bg-indigo-950/30 text-indigo-400 border-indigo-900/50'
+                                                    : 'bg-indigo-50 text-indigo-600 border-indigo-100'
+                                                    }`}>
+                                                    {doc.patient.full_name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className={`font-bold text-sm ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                                                        {doc.patient.full_name}
+                                                    </span>
+                                                    {(doc.patient.phone || doc.patient.email) && (
+                                                        <span className={`text-[11px] font-medium mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                            {doc.patient.phone || doc.patient.email}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td className="px-8 py-6 align-middle">
+                                            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide transition-all border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} animate-pulse`}></span>
+                                                {doc.status}
+                                            </div>
+                                        </td>
+
+                                        <td className="px-8 py-6 align-middle">
+                                            <div className="flex flex-col gap-1.5">
+                                                <div className={`flex items-center gap-2 text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                                    <Calendar className="w-3.5 h-3.5 opacity-60" />
+                                                    <span>{formatDisplayDate(doc.created_at)}</span>
+                                                </div>
+
+                                                {doc.status === 'VIEWED' && doc.link_accessed_at && (
+                                                    <div className="flex items-center gap-2 text-[11px] font-bold text-blue-500">
+                                                        <div className="w-1 h-1 rounded-full bg-blue-500" />
+                                                        <span>Accessed {formatDisplayDate(doc.link_accessed_at)}</span>
+                                                    </div>
+                                                )}
+
+                                                {(doc.status === 'SIGNED' || doc.status === 'COMPLETED') && doc.signed_date && (
+                                                    <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-500">
+                                                        <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                                        <span>Signed {formatDisplayDate(doc.signed_date)}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+
+                                        <td className="px-8 py-6 align-middle text-right">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onViewDocument(doc.id);
+                                                }}
+                                                className={`inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${isDark
+                                                    ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                                    : 'bg-white text-slate-700 hover:text-blue-600 border border-slate-200 hover:border-blue-200 hover:shadow-md'
+                                                    }`}
+                                            >
+                                                View
+                                                <ChevronRight className="w-3.5 h-3.5 opacity-60" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination / Footer Placeholder */}
+                {!isLoading && documents.length > 0 && (
+                    <div className="px-6 py-4 border-t border-slate-100/80 bg-slate-50/50 flex items-center justify-between text-sm text-slate-500">
+                        <span>Showing <span className="font-semibold text-slate-900">{documents.length}</span> documents</span>
                     </div>
                 )}
             </div>

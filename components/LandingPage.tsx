@@ -25,23 +25,34 @@ export const LandingPage: React.FC = () => {
           <div className="bg-blue-600 p-2 rounded-lg">
             <Zap className="w-6 h-6 text-white fill-current" />
           </div>
-          <span className="font-bold text-2xl text-slate-900 tracking-tight">wizex</span>
+          <span className="font-bold text-2xl text-slate-900 tracking-tight">SignWize</span>
         </div>
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Welcome</h1>
         <p className="text-slate-500 text-sm md:text-base mb-8">
           Use the example login below to enter the app via SSO.
         </p>
 
-        <button
-          onClick={handleExampleLogin}
-          className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-black transition-all flex items-center justify-center gap-2"
-        >
-          <Lock className="w-5 h-5" /> Example Login <ArrowRight className="w-5 h-5" />
-        </button>
+        {/* @ts-ignore - Vite env properties */}
+        {import.meta.env.DEV ? (
+          <>
+            <button
+              onClick={handleExampleLogin}
+              className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-black transition-all flex items-center justify-center gap-2"
+            >
+              <Lock className="w-5 h-5" /> Example Login <ArrowRight className="w-5 h-5" />
+            </button>
 
-        <p className="text-xs text-slate-400 mt-4">
-          This button calls the backend SSO test token endpoint.
-        </p>
+            <p className="text-xs text-slate-400 mt-4">
+              This button calls the backend SSO test token endpoint.
+            </p>
+          </>
+        ) : (
+          <div className="p-5 bg-blue-50 text-blue-800 rounded-xl border border-blue-100 flex flex-col items-center">
+            <Lock className="w-6 h-6 mb-2 text-blue-600" />
+            <h3 className="font-bold text-lg mb-1">Direct Access Disabled</h3>
+            <p className="text-sm">Please log in through your WizeFlow portal to access WizeSign.</p>
+          </div>
+        )}
       </div>
     </div>
   );

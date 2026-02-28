@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { Save, MessageSquare, Key, Hash, FileText, User, Building, ArrowLeft } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate } from 'react-router-dom';
@@ -64,7 +64,7 @@ export const SettingsPage: React.FC = () => {
                 wizechat_config: formData
             });
             toast.success("Settings saved successfully!");
-            
+
             // Refresh status after save
             const statusRes = await api.getWizeChatStatus();
             setWizechatStatus(statusRes);
@@ -76,182 +76,176 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
+    const isDark = useAppStore(state => state.theme === 'dark');
+
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-4xl mx-auto py-4 px-4 space-y-8 pb-12">
-                <div className="flex items-center gap-4">
+        <div className={`h-full flex flex-col transition-colors duration-300 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
+            <div className="w-full py-4 px-2 space-y-8 pb-12">
+                <div className="flex items-center gap-6 mb-4">
                     <button
                         onClick={() => navigate('/doctor/dashboard')}
-                        className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                        className={`group p-2 rounded-xl transition-all ${isDark ? 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800' : 'bg-white text-slate-500 hover:text-slate-900 hover:shadow-md'
+                            } border ${isDark ? 'border-slate-800' : 'border-slate-100'}`}
                     >
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="font-medium">Back</span>
+                        <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-                        <p className="text-slate-500">Manage your profile and integrations.</p>
+                        <h1 className={`text-3xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>Settings</h1>
+                        <p className="text-slate-500 font-medium mt-1">Manage your account and WizeChat configuration</p>
                     </div>
                 </div>
 
-            {/* Read-Only Profile Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="border-b border-slate-200 px-6 py-4 flex items-center gap-2 bg-slate-50">
-                    <div className="bg-blue-100 p-2 rounded-lg">
-                        <User className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                        <h2 className="font-semibold text-slate-900">Profile & Organization</h2>
-                        <p className="text-xs text-slate-500">Synced from WizeFlow (Read-only)</p>
-                    </div>
-                </div>
-
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Full Name</label>
-                        <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-slate-700 font-medium">
-                            {profile?.name || 'Loading...'}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
-                        <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-slate-700 font-medium">
-                            {profile?.email || 'Loading...'}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Role</label>
-                        <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-slate-700 font-medium">
-                            {profile?.role || 'Loading...'}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Hospital / Clinic</label>
-                        <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-slate-700 font-medium flex items-center gap-2">
-                            <Building className="w-4 h-4 text-slate-400" />
-                            {hospital?.name || 'Loading...'}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* WizeChat Integration Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
-                    <div className="flex items-center gap-2">
-                        <div className="bg-green-100 p-2 rounded-lg">
-                            <MessageSquare className="w-5 h-5 text-green-600" />
-                        </div>
-                        <div>
-                            <h2 className="font-semibold text-slate-900">WizeChat Integration</h2>
-                            <p className="text-xs text-slate-500">Configure WhatsApp sending via WizeChat API</p>
-                        </div>
-                    </div>
-                    {/* Status Badge */}
-                    {wizechatStatus && (
-                        <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
-                            wizechatStatus.configured 
-                                ? 'bg-green-100 text-green-700 border border-green-200' 
-                                : 'bg-red-100 text-red-700 border border-red-200'
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    {/* Read-Only Profile Section */}
+                    <div className={`lg:col-span-5 rounded-[2.5rem] border overflow-hidden transition-all duration-300 ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-100 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]'
                         }`}>
-                            {wizechatStatus.configured ? (
-                                <>
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                    </svg>
-                                    Configured
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                    </svg>
-                                    Not Configured
-                                </>
+                        <div className={`px-8 py-6 flex items-center gap-4 ${isDark ? 'bg-slate-900/40 border-b border-slate-800' : 'bg-slate-50/50 border-b border-slate-50'}`}>
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform hover:rotate-3 ${isDark ? 'bg-blue-600/10 text-blue-400' : 'bg-blue-100/50 text-blue-600'}`}>
+                                <User className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-lg">Profile Details</h2>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Locked to WizeFlow</p>
+                            </div>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            {[
+                                { label: 'Full Name', value: profile?.name, icon: User },
+                                { label: 'Email Address', value: profile?.email, icon: Building }, // Using Building just for variety as example, User is fine too
+                                { label: 'Role', value: profile?.role, icon: Hash },
+                                { label: 'Hospital', value: hospital?.name, icon: Building },
+                            ].map((item, i) => (
+                                <div key={i} className="group">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">{item.label}</label>
+                                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 font-bold text-sm transition-all ${isDark ? 'bg-slate-950/20 border-slate-800 text-slate-300' : 'bg-slate-50/30 border-slate-100 text-slate-700'
+                                        }`}>
+                                        <item.icon className={`w-4 h-4 opacity-40`} />
+                                        {item.value || 'Loading...'}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* WizeChat Integration Section */}
+                    <div className={`lg:col-span-7 rounded-[2.5rem] border overflow-hidden transition-all duration-300 ${isDark ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-100 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]'
+                        }`}>
+                        <div className={`px-8 py-6 flex items-center justify-between ${isDark ? 'bg-slate-900/40 border-b border-slate-800' : 'bg-slate-50/50 border-b border-slate-50'}`}>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform hover:rotate-3 ${isDark ? 'bg-emerald-600/10 text-emerald-400' : 'bg-emerald-100/50 text-emerald-600'}`}>
+                                    <MessageSquare className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-lg">WizeChat Config</h2>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">WhatsApp Integration</p>
+                                </div>
+                            </div>
+
+                            {wizechatStatus && (
+                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 border transition-all ${wizechatStatus.configured
+                                    ? (isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-100')
+                                    : (isDark ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-700 border-rose-100')
+                                    }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${wizechatStatus.configured ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`}></span>
+                                    {wizechatStatus.configured ? 'Connected' : 'Disconnected'}
+                                </div>
                             )}
                         </div>
-                    )}
+
+                        <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">WizeChat API Key</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <Key className="h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                        </div>
+                                        <input
+                                            type="password"
+                                            name="api_key"
+                                            value={formData.api_key}
+                                            onChange={handleChange}
+                                            className={`pl-11 block w-full rounded-2xl border py-3 text-sm font-bold transition-all focus:outline-none focus:ring-4 ${isDark
+                                                ? 'bg-slate-950/40 border-slate-800 text-white focus:border-blue-500/50 focus:ring-blue-500/10 placeholder:text-slate-700'
+                                                : 'bg-white border-slate-200 text-slate-900 focus:border-blue-500 focus:ring-blue-500/5'
+                                                }`}
+                                            placeholder="wize_sk_..."
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Inbox ID</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <Hash className="h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            name="inbox_id"
+                                            value={formData.inbox_id}
+                                            onChange={handleChange}
+                                            className={`pl-11 block w-full rounded-2xl border py-3 text-sm font-bold transition-all focus:outline-none focus:ring-4 ${isDark
+                                                ? 'bg-slate-950/40 border-slate-800 text-white focus:border-blue-500/50 focus:ring-blue-500/10 placeholder:text-slate-700'
+                                                : 'bg-white border-slate-200 text-slate-900 focus:border-blue-500 focus:ring-blue-500/5'
+                                                }`}
+                                            placeholder="UUID"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Template ID</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <FileText className="h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            name="template_id"
+                                            value={formData.template_id}
+                                            onChange={handleChange}
+                                            className={`pl-11 block w-full rounded-2xl border py-3 text-sm font-bold transition-all focus:outline-none focus:ring-4 ${isDark
+                                                ? 'bg-slate-950/40 border-slate-800 text-white focus:border-blue-500/50 focus:ring-blue-500/10 placeholder:text-slate-700'
+                                                : 'bg-white border-slate-200 text-slate-900 focus:border-blue-500 focus:ring-blue-500/5'
+                                                }`}
+                                            placeholder="UUID"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">Template Name</label>
+                                    <input
+                                        type="text"
+                                        name="template_name"
+                                        value={formData.template_name}
+                                        onChange={handleChange}
+                                        className={`block w-full rounded-2xl border px-4 py-3 text-sm font-bold transition-all focus:outline-none focus:ring-4 ${isDark
+                                            ? 'bg-slate-950/40 border-slate-800 text-white focus:border-blue-500/50 focus:ring-blue-500/10 placeholder:text-slate-700'
+                                            : 'bg-white border-slate-200 text-slate-900 focus:border-blue-500 focus:ring-blue-500/5'
+                                            }`}
+                                        placeholder="e.g. medical_consent_whatsapp"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className={`inline-flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] text-sm font-bold transition-all shadow-xl active:scale-95 disabled:opacity-50 ${isDark ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/40' : 'bg-slate-950 hover:bg-slate-900 text-white shadow-black/20'
+                                        }`}
+                                >
+                                    <Save className="w-5 h-5" />
+                                    {loading ? 'Saving...' : 'Save Config'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">API Key</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Key className="h-4 w-4 text-slate-400" />
-                                </div>
-                                <input
-                                    type="password"
-                                    name="api_key"
-                                    value={formData.api_key}
-                                    onChange={handleChange}
-                                    className="pl-10 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border"
-                                    placeholder="wize_sk_..."
-                                />
-                            </div>
-                            <p className="mt-1 text-xs text-slate-500">Your WizeChat Secret Key</p>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Inbox ID</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Hash className="h-4 w-4 text-slate-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    name="inbox_id"
-                                    value={formData.inbox_id}
-                                    onChange={handleChange}
-                                    className="pl-10 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border"
-                                    placeholder="UUID"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Template ID</label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <FileText className="h-4 w-4 text-slate-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    name="template_id"
-                                    value={formData.template_id}
-                                    onChange={handleChange}
-                                    className="pl-10 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border"
-                                    placeholder="UUID"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Template Name (Optional)</label>
-                            <input
-                                type="text"
-                                name="template_name"
-                                value={formData.template_name}
-                                onChange={handleChange}
-                                className="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 border px-3"
-                                placeholder="e.g. consent_form_patient_name"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-100 flex justify-end">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                        >
-                            <Save className="w-4 h-4 mr-2" />
-                            {loading ? 'Saving...' : 'Save Configuration'}
-                        </button>
-                    </div>
-                </form>
             </div>
-        </div>
         </div>
     );
 };

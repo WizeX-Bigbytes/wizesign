@@ -269,3 +269,12 @@ class HospitalResponse(BaseModel):
 
 class HospitalSettingsUpdate(BaseModel):
     wizechat_config: WizeChatConfig
+
+# ============ Super Admin Schemas ============
+class SuperAdminStatsResponse(BaseModel):
+    total_hospitals: int
+    total_users: int
+    total_patients: int
+    total_documents: int
+    documents_by_status: dict
+    active_hospitals: int
