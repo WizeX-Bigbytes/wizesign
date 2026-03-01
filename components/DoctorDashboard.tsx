@@ -121,6 +121,7 @@ export const DoctorDashboard: React.FC = () => {
       await api.saveTemplate({
         name: `Copy of ${original.name}`,
         file_url: original.file_url,
+        file_path: original.file_path,
         fields: original.fields,
       });
       toast.success(`"Copy of ${original.name}" created!`);
