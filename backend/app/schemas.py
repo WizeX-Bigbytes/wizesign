@@ -141,6 +141,8 @@ class DocumentDetailResponse(BaseModel):
     patient: PatientResponse
     secure_token: UUID
     patient_link: Optional[str] = None
+    created_at: datetime
+    link_accessed_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
