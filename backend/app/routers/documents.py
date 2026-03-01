@@ -959,6 +959,8 @@ async def get_document_by_id(
         )
     
     await db.refresh(document, ["patient"])
+    
+    document.patient_link = f"{settings.FRONTEND_URL}/patient/view?token={document.secure_token}"
     return document
 
 
@@ -1025,6 +1027,9 @@ async def list_documents(
     
     result = await db.execute(query)
     documents = result.scalars().all()
+    
+    for doc in documents:
+        doc.patient_link = f"{settings.FRONTEND_URL}/patient/view?token={doc.secure_token}"
     
     return documents
 

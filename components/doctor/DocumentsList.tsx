@@ -269,23 +269,36 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                                         </td>
 
                                         <td className="px-8 py-6 align-middle">
-                                            <div className="flex flex-col gap-1.5">
-                                                <div className={`flex items-center gap-2 text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                                    <Calendar className="w-3.5 h-3.5 opacity-60" />
-                                                    <span>{formatDisplayDate(doc.created_at)}</span>
+                                            <div className="flex flex-col gap-1.5 group/timeline py-1">
+                                                {/* Sent Status - Always present for sent docs */}
+                                                <div className={`flex items-center gap-2 text-[11px] font-bold transition-colors ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                    <span>Sent {formatDisplayDateTime(doc.created_at)}</span>
                                                 </div>
 
-                                                {doc.status === 'VIEWED' && doc.link_accessed_at && (
-                                                    <div className="flex items-center gap-2 text-[11px] font-bold text-blue-500">
-                                                        <div className="w-1 h-1 rounded-full bg-blue-500" />
-                                                        <span>Accessed {formatDisplayDate(doc.link_accessed_at)}</span>
+                                                {/* Accessed Status */}
+                                                {doc.link_accessed_at ? (
+                                                    <div className="flex items-center gap-2 text-[11px] font-bold text-blue-500 animate-in fade-in slide-in-from-left-2 duration-300">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                        <span>Viewed {formatDisplayDateTime(doc.link_accessed_at)}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className={`flex items-center gap-2 text-[11px] font-medium transition-all duration-300 ${isDark ? 'text-slate-600 group-hover/timeline:text-slate-500' : 'text-slate-300 group-hover/timeline:text-slate-400'}`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full border ${isDark ? 'border-slate-700' : 'border-slate-200'}`} />
+                                                        <span>Not viewed yet</span>
                                                     </div>
                                                 )}
 
-                                                {(doc.status === 'SIGNED' || doc.status === 'COMPLETED') && doc.signed_date && (
-                                                    <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-500">
-                                                        <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                                                        <span>Signed {formatDisplayDate(doc.signed_date)}</span>
+                                                {/* Signed Status */}
+                                                {(doc.signed_date) ? (
+                                                    <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-500 animate-in fade-in slide-in-from-left-2 duration-500">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                        <span>Signed {formatDisplayDateTime(doc.signed_date)}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className={`flex items-center gap-2 text-[11px] font-medium transition-all duration-300 ${isDark ? 'text-slate-600 group-hover/timeline:text-slate-500' : 'text-slate-300 group-hover/timeline:text-slate-400'}`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full border ${isDark ? 'border-slate-700' : 'border-slate-200'}`} />
+                                                        <span>Not signed yet</span>
                                                     </div>
                                                 )}
                                             </div>

@@ -139,6 +139,8 @@ class DocumentDetailResponse(BaseModel):
     certificate_issued_at: Optional[datetime]
     audit_trail: List[dict]
     patient: PatientResponse
+    secure_token: UUID
+    patient_link: Optional[str] = None
 
     class Config:
         from_attributes = True

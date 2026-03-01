@@ -124,11 +124,11 @@ export const SendConfirmationModal: React.FC<SendConfirmationModalProps> = ({
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-slate-500">Email</span>
-                                <span className="text-sm font-medium text-slate-900">{patientDetails.email || 'N/A'}</span>
+                                <span className="text-sm font-medium text-slate-900">{patientDetails.email || '--'}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-sm text-slate-500">Phone</span>
-                                <span className="text-sm font-medium text-slate-900">{patientDetails.phone || 'Not provided'}</span>
+                                <span className="text-sm font-medium text-slate-900">{patientDetails.phone || '--'}</span>
                             </div>
                         </div>
                     </div>

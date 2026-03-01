@@ -315,7 +315,7 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                                                         {isEditing ? (
                                                             <input autoFocus className="w-full h-full bg-transparent border-none outline-none font-medium p-1 text-slate-900" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any, fontFamily: field.fontFamily || 'Inter, sans-serif' }} value={field.value || ''} onChange={(e) => { updateField(field.id, { value: e.target.value }); if (validationErrors.has(field.id)) { onClearValidationError(field.id); } }} onBlur={() => { setEditingFieldId(null); if (field.id.includes('title-field')) updateConsentForm({ procedureName: field.value }); }} onMouseDown={(e) => e.stopPropagation()} />
                                                         ) : (
-                                                            <div className={`w-full h-full flex items-center ${field.type === 'SIGNATURE' ? 'justify-center' : 'justify-start px-1'}`}>
+                                                            <div className={`w-full h-full flex items-center ${field.type === 'SIGNATURE' ? 'justify-center' : 'px-1'}`}>
                                                                 {field.type === 'SIGNATURE' ? (
                                                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-amber-600' : 'text-amber-600/50'}`}>Signature</span>
                                                                 ) : field.type === 'CHECKBOX' ? (
@@ -336,13 +336,13 @@ export const CanvasArea: React.FC<CanvasAreaProps> = ({
                                                                         <span className="font-sans text-slate-700 truncate" style={{ fontSize: `${field.fontSize || 14}px` }}>{field.label}</span>
                                                                     </div>
                                                                 ) : (
-                                                                    <span className="truncate w-full" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any, fontFamily: field.fontFamily || 'Inter, sans-serif' }}>
+                                                                    <div className="truncate w-full block" style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', textAlign: field.textAlign || 'left' as any, fontFamily: field.fontFamily || 'Inter, sans-serif' }}>
                                                                         {field.value ? (
                                                                             <span className="text-slate-900">{field.value}</span>
                                                                         ) : (
-                                                                            <span className="text-slate-400/50 italic font-normal">{field.label}</span>
+                                                                            <span className="text-slate-400/50 italic font-normal block" style={{ textAlign: field.textAlign || 'left' as any }}>{field.label}</span>
                                                                         )}
-                                                                    </span>
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         )}

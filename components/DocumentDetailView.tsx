@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { ArrowLeft, FileText, User, Calendar, Clock, CheckCircle, Mail, Phone, Download } from 'lucide-react';
 import { formatDisplayDate, formatDisplayDateTime } from '../utils/dateUtils';
+import { DocumentViewer } from './patient/DocumentViewer';
 
 /** Turns a raw User-Agent string into a human-readable label. */
 const parseUserAgent = (ua: string): string => {
@@ -47,6 +48,7 @@ export const DocumentDetailView: React.FC = () => {
     const [document, setDocument] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
 
     useEffect(() => {
         loadDocument();
@@ -194,11 +196,11 @@ export const DocumentDetailView: React.FC = () => {
                             <div className="bg-slate-50 rounded-xl p-4 space-y-3">
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">Doctor Name</span>
-                                    <span className="font-semibold text-slate-900">{document.doctor_name || 'N/A'}</span>
+                                    <span className="font-semibold text-slate-900">{document.doctor_name || '--'}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">Clinic Name</span>
-                                    <span className="font-semibold text-slate-900">{document.clinic_name || 'N/A'}</span>
+                                    <span className="font-semibold text-slate-900">{document.clinic_name || '--'}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">Fields</span>
@@ -210,10 +212,10 @@ export const DocumentDetailView: React.FC = () => {
                                         {document.link_accessed ? (
                                             <span className="text-green-600 flex items-center gap-1">
                                                 <CheckCircle className="w-4 h-4" />
-                                                Yes - {document.link_accessed_at ? formatDisplayDateTime(document.link_accessed_at) : ''}
+                                                Viewed {document.link_accessed_at ? formatDisplayDateTime(document.link_accessed_at) : 'recently'}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400">Not yet</span>
+                                            <span className="text-slate-400 font-medium italic">Not viewed yet</span>
                                         )}
                                     </span>
                                 </div>
@@ -266,9 +268,7 @@ export const DocumentDetailView: React.FC = () => {
                                             <div>
                                                 <div className="text-xs text-slate-500 mb-1">Issued On</div>
                                                 <div className="font-semibold text-slate-900 text-sm">
-                                                    {document.certificate_issued_at
-                                                        ? formatDisplayDateTime(document.certificate_issued_at)
-                                                        : 'N/A'}
+                                                    {formatDisplayDateTime(document.certificate_issued_at)}
                                                 </div>
                                             </div>
                                         </div>
@@ -319,81 +319,34 @@ export const DocumentDetailView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Document Preview — only for non-signed docs */}
-                        {document.status !== 'SIGNED' && document.status !== 'COMPLETED' && (
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900 mb-4">Document Preview</h2>
-                                <div className="bg-slate-50 rounded-xl p-6">
-                                    {document.file_url ? (
+                        {/* Document Preview */}
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900 mb-4">Document Preview</h2>
+                            <div className="bg-slate-50 rounded-xl p-6">
+                                {document.status === 'SIGNED' || document.status === 'COMPLETED' ? (
+                                    document.file_url ? (
                                         <div className="space-y-4">
-                                            <div className="relative w-full bg-white rounded-lg shadow-lg overflow-hidden">
-                                                <img
-                                                    src={document.file_url}
-                                                    alt="Document"
-                                                    className="w-full"
-                                                />
-                                                {/* Render fields on top of the document */}
-                                                {document.fields && document.fields.length > 0 && (
-                                                    <div className="absolute inset-0 pointer-events-none">
-                                                        {document.fields.map((field: any) => {
-                                                            if (!field.value && field.type !== 'SIGNATURE') return null;
-
-                                                            return (
-                                                                <div
-                                                                    key={field.id}
-                                                                    style={{
-                                                                        position: 'absolute',
-                                                                        left: `${field.x}%`,
-                                                                        top: `${field.y}%`,
-                                                                        width: `${field.w}%`,
-                                                                        height: `${field.h}%`,
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: field.textAlign || 'left',
-                                                                        padding: '4px',
-                                                                    }}
-                                                                >
-                                                                    {field.type === 'SIGNATURE' && document.signature ? (
-                                                                        <img
-                                                                            src={document.signature}
-                                                                            alt="Signature"
-                                                                            style={{
-                                                                                width: '100%',
-                                                                                height: '100%',
-                                                                                objectFit: 'contain'
-                                                                            }}
-                                                                        />
-                                                                    ) : (
-                                                                        <div
-                                                                            style={{
-                                                                                fontSize: field.fontSize ? `${field.fontSize}px` : '14px',
-                                                                                fontWeight: field.fontWeight || 'normal',
-                                                                                color: '#1e293b',
-                                                                                width: '100%',
-                                                                                textAlign: field.textAlign || 'left',
-                                                                                wordWrap: 'break-word',
-                                                                            }}
-                                                                        >
-                                                                            {field.value}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex justify-center">
-                                                <a
-                                                    href={document.file_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                                >
-                                                    <Download className="w-4 h-4" />
-                                                    Download Document
-                                                </a>
-                                            </div>
+                                            {!showPreview ? (
+                                                <div className="flex justify-center py-10 bg-white rounded-lg border border-slate-200 shadow-inner">
+                                                    <button
+                                                        onClick={() => setShowPreview(true)}
+                                                        className="flex items-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition-colors shadow-sm"
+                                                    >
+                                                        <FileText className="w-5 h-5" />
+                                                        Show Document Preview
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="relative w-full rounded-lg overflow-hidden border border-slate-200 bg-white">
+                                                    <DocumentViewer
+                                                        fileUrl={document.file_url}
+                                                        fields={document.fields || []}
+                                                        signature={document.signature || ''}
+                                                        patientName={document.patient.full_name}
+                                                        readonly={true}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="bg-white rounded-xl border-2 border-dashed border-slate-300 p-12">
@@ -420,10 +373,18 @@ export const DocumentDetailView: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
+                                    )
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg border-2 border-dashed border-slate-300">
+                                        <FileText className="w-12 h-12 text-slate-300 mb-3" />
+                                        <h3 className="text-lg font-bold text-slate-700">Not signed yet</h3>
+                                        <p className="text-sm text-slate-500 text-center max-w-sm mt-2">
+                                            The document preview will be available here once the patient has completed signing.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        </div>
 
                         {/* Audit Trail */}
                         {document.audit_trail && document.audit_trail.length > 0 && (

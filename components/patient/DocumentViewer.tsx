@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PenTool, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
+import { PenTool, Loader2, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SmartField } from '../../types';
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist';
 
@@ -12,9 +12,10 @@ interface DocumentViewerProps {
     fileUrl: string;
     fields: SmartField[] | undefined;
     signature: string;
-    onSignClick: () => void;
+    onSignClick?: () => void;
     patientName: string;
     onFieldChange?: (fieldId: string, value: string) => void;
+    readonly?: boolean;
 }
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
@@ -23,11 +24,13 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     signature,
     onSignClick,
     patientName,
-    onFieldChange
+    onFieldChange,
+    readonly = false
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
     const [zoomLevel, setZoomLevel] = useState(1.0);
+    const [currentPage, setCurrentPage] = useState(1);
     const [renderUrls, setRenderUrls] = useState<string[]>([]);
     const [isRendering, setIsRendering] = useState(false);
 
@@ -127,35 +130,62 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
     return (
         <div className="flex flex-col gap-3">
-            {/* Zoom Controls */}
-            <div className="flex items-center justify-end gap-2 sticky top-0 z-10 bg-slate-50/80 backdrop-blur-sm py-2 px-3 rounded-xl border border-slate-200 self-start ml-auto">
-                <button
-                    onClick={handleZoomOut}
-                    disabled={zoomLevel <= 0.5}
-                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-600"
-                    aria-label="Zoom out"
-                >
-                    <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="text-xs font-bold text-slate-600 min-w-[38px] text-center">
-                    {Math.round(zoomLevel * 100)}%
-                </span>
-                <button
-                    onClick={handleZoomIn}
-                    disabled={zoomLevel >= 2.0}
-                    className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-600"
-                    aria-label="Zoom in"
-                >
-                    <ZoomIn className="w-4 h-4" />
-                </button>
+            {/* Controls Bar */}
+            <div className="flex items-center justify-between sticky top-0 z-10 bg-slate-50/80 backdrop-blur-sm py-2 px-3 rounded-xl border border-slate-200">
+                {/* Pagination Controls */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1 || renderUrls.length === 0}
+                        className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-600"
+                        aria-label="Previous page"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs font-bold text-slate-600 min-w-[60px] text-center">
+                        {renderUrls.length > 0 ? `${currentPage} / ${renderUrls.length}` : '0 / 0'}
+                    </span>
+                    <button
+                        onClick={() => setCurrentPage(p => Math.min(renderUrls.length, p + 1))}
+                        disabled={currentPage === renderUrls.length || renderUrls.length === 0}
+                        className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-600"
+                        aria-label="Next page"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleZoomOut}
+                        disabled={zoomLevel <= 0.5}
+                        className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-600"
+                        aria-label="Zoom out"
+                    >
+                        <ZoomOut className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs font-bold text-slate-600 min-w-[38px] text-center">
+                        {Math.round(zoomLevel * 100)}%
+                    </span>
+                    <button
+                        onClick={handleZoomIn}
+                        disabled={zoomLevel >= 2.0}
+                        className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-600"
+                        aria-label="Zoom in"
+                    >
+                        <ZoomIn className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
             <div
                 ref={containerRef}
-                className="bg-slate-200/50 rounded-xl md:rounded-2xl border border-slate-300 overflow-auto flex flex-col relative w-full items-center p-4 gap-8"
+                className="bg-slate-200/50 rounded-xl md:rounded-2xl border border-slate-300 overflow-auto flex flex-col relative w-full items-center p-4 gap-8 min-h-[500px]"
             >
-                {renderUrls.map((pageUrl, index) => {
-                    const pageNum = index + 1;
+                {renderUrls.length > 0 && (() => {
+                    const pageUrl = renderUrls[currentPage - 1];
+                    const pageNum = currentPage;
                     const pageFields = fields?.filter(f => (f.page || 1) === pageNum) || [];
 
                     return (
@@ -182,26 +212,28 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                                 {pageFields.map((field) => (
                                     <div
                                         key={field.id}
-                                        className="absolute flex flex-col justify-start"
+                                        className="absolute"
                                         style={{ left: `${field.x}%`, top: `${field.y}%`, width: `${field.w}%`, height: `${field.h}%` }}
                                     >
                                         {field.type === 'SIGNATURE' ? (
-                                            <button
-                                                onClick={onSignClick}
+                                            <div
+                                                onClick={!readonly && onSignClick ? onSignClick : undefined}
                                                 className={`w-full h-full rounded-lg border-2 transition-all flex items-center justify-center group 
                                                 ${signature
                                                         ? 'bg-transparent border-transparent'
-                                                        : 'bg-amber-50/50 border-amber-400 hover:bg-amber-100/50 cursor-pointer animate-pulse'}`}
+                                                        : (readonly ? 'bg-amber-50/30 border-amber-300 border-dashed' : 'bg-amber-50/50 border-amber-400 hover:bg-amber-100/50 cursor-pointer animate-pulse')}`}
                                             >
                                                 {signature ? (
                                                     <img src={signature} alt="Signed" className="max-h-full max-w-full object-contain" />
+                                                ) : readonly ? (
+                                                    <span className="text-amber-500 font-bold uppercase tracking-widest text-[10px] opacity-60">Signature Block</span>
                                                 ) : (
                                                     <div className="flex flex-col items-center text-amber-700 scale-90 md:scale-100">
                                                         <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm mb-1 uppercase tracking-wide whitespace-nowrap">Click to Sign</span>
                                                         <PenTool className="w-5 h-5 opacity-50" />
                                                     </div>
                                                 )}
-                                            </button>
+                                            </div>
                                         ) : field.type === 'CHECKBOX' ? (
                                             <div
                                                 className="w-full h-full flex items-start pt-1"
@@ -209,8 +241,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                                             >
                                                 <button
                                                     type="button"
-                                                    onClick={() => onFieldChange && onFieldChange(field.id, field.value === 'true' ? 'false' : 'true')}
-                                                    className={`border-2 rounded flex items-center justify-center flex-shrink-0 transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 hover:scale-110 active:scale-95 cursor-pointer ${field.value === 'true' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-200' : 'bg-white border-slate-400 hover:border-blue-400'}`}
+                                                    onClick={() => !readonly && onFieldChange && onFieldChange(field.id, field.value === 'true' ? 'false' : 'true')}
+                                                    className={`border-2 rounded flex items-center justify-center flex-shrink-0 transition-all ${!readonly ? 'focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-default'} ${field.value === 'true' ? 'bg-blue-600 border-blue-600 shadow-md shadow-blue-200' : 'bg-white border-slate-400 hover:border-blue-400'}`}
                                                     style={{ width: `${(field.fontSize || 14) + 6}px`, height: `${(field.fontSize || 14) + 6}px` }}
                                                     aria-label={field.label || 'Checkbox'}
                                                     aria-checked={field.value === 'true'}
@@ -226,7 +258,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                                                     <span
                                                         className="ml-2 leading-tight text-slate-900 cursor-pointer select-none"
                                                         style={{ fontSize: `${field.fontSize || 14}px`, fontWeight: field.fontWeight || 'normal', fontFamily: field.fontFamily || 'Inter, sans-serif' }}
-                                                        onClick={() => onFieldChange && onFieldChange(field.id, field.value === 'true' ? 'false' : 'true')}
+                                                        onClick={() => !readonly && onFieldChange && onFieldChange(field.id, field.value === 'true' ? 'false' : 'true')}
                                                     >
                                                         {field.label}
                                                     </span>
@@ -251,7 +283,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                             </div>
                         </div>
                     );
-                })}
+                })()}
             </div>
         </div>
     );

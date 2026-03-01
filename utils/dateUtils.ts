@@ -42,7 +42,7 @@ const normalizeToUTC = (dateInput: string | number | Date | null | undefined): D
  */
 export const formatDisplayDate = (dateInput: string | number | Date | null | undefined): string => {
     const d = normalizeToUTC(dateInput);
-    if (!d) return 'N/A';
+    if (!d) return '--';
 
     return new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
@@ -56,7 +56,7 @@ export const formatDisplayDate = (dateInput: string | number | Date | null | und
  */
 export const formatDisplayDateTime = (dateInput: string | number | Date | null | undefined): string => {
     const d = normalizeToUTC(dateInput);
-    if (!d) return 'N/A';
+    if (!d) return '--';
 
     return new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
