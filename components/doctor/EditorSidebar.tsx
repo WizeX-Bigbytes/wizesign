@@ -50,10 +50,10 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
     };
 
     return (
-        <div className="w-full lg:w-80 bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col shrink-0 order-2 lg:order-1 max-h-[80vh] lg:max-h-full overflow-hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-50 lg:relative lg:w-80 bg-white shadow-[0_-8px_30px_-15px_rgba(0,0,0,0.2)] lg:shadow-md border-t border-slate-200 lg:border lg:border-slate-200/60 flex flex-col shrink-0 rounded-t-2xl lg:rounded-2xl max-h-[45vh] lg:max-h-full lg:h-full overflow-hidden transition-all">
             {/* Context Section (Always Visible) */}
-            <div className="flex-none p-4 border-b border-slate-200 bg-slate-50/50">
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <div className="flex-none p-3 lg:p-4 border-b border-slate-200 bg-slate-50/50">
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 lg:mb-3 flex items-center gap-2">
                     <User className="w-3 h-3" /> Data Source
                 </h3>
                 <div className="space-y-3">

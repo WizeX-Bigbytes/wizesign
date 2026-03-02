@@ -345,7 +345,7 @@ export const DoctorEditor: React.FC = () => {
                     canSend={!!(patientDetails.fullName && patientDetails.phone && consentForm.fields?.length)}
                 />
 
-                <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0 mt-4 md:mt-2">
+                <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0 mt-4 md:mt-2 pb-[46vh] lg:pb-0">
                     <EditorSidebar
                         selectedIds={selectedIds}
                         onClearSelection={() => setSelectedIds(new Set())}

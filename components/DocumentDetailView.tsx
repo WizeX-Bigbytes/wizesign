@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../services/api';
-import { ArrowLeft, FileText, User, Calendar, Clock, CheckCircle, Mail, Phone, Download } from 'lucide-react';
+import { ArrowLeft, FileText, User, Calendar, Clock, CheckCircle, Mail, Phone, Download, Eye } from 'lucide-react';
 import { formatDisplayDate, formatDisplayDateTime } from '../utils/dateUtils';
 import { DocumentViewer } from './patient/DocumentViewer';
 
@@ -108,38 +108,39 @@ export const DocumentDetailView: React.FC = () => {
     }
 
     return (
-        <div className="h-full overflow-y-auto bg-slate-50 p-6">
-            <div className="max-w-5xl mx-auto space-y-6 pb-12">
+        <div className="h-full overflow-y-auto bg-slate-50 p-4 md:p-6 pb-24 md:pb-6">
+            <div className="max-w-5xl mx-auto space-y-4 md:space-y-6 pb-6 md:pb-12">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <button
                         onClick={() => navigate('/doctor/dashboard')}
-                        className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-medium"
+                        className="flex items-center gap-1.5 md:gap-2 text-slate-600 hover:text-slate-900 font-medium text-sm md:text-base transition-colors"
                     >
-                        <ArrowLeft className="w-5 h-5" />
-                        Back to Dashboard
+                        <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+                        <span className="hidden md:inline">Back to Dashboard</span>
+                        <span className="md:hidden">Back</span>
                     </button>
-                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border ${getStatusColor(document.status)}`}>
-                        {document.status === 'SIGNED' && <CheckCircle className="w-4 h-4" />}
+                    <div className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-bold border ${getStatusColor(document.status)}`}>
+                        {document.status === 'SIGNED' && <CheckCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />}
                         <span>{document.status}</span>
                     </div>
                 </div>
 
                 {/* Document Info Card */}
                 <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
-                        <div className="flex items-start gap-4">
-                            <FileText className="w-12 h-12" />
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 md:p-6 text-white">
+                        <div className="flex flex-col md:flex-row md:items-start gap-4">
+                            <FileText className="hidden md:block w-12 h-12 text-blue-100" />
                             <div className="flex-1">
-                                <h1 className="text-2xl font-bold mb-2">{document.procedure_name}</h1>
-                                <div className="flex flex-wrap gap-4 text-blue-100 text-sm">
-                                    <div className="flex items-center gap-1">
-                                        <Calendar className="w-4 h-4" />
+                                <h1 className="text-xl md:text-2xl font-bold mb-2 leading-tight">{document.procedure_name}</h1>
+                                <div className="flex flex-col sm:flex-row flex-wrap gap-2 md:gap-4 text-blue-100 text-xs md:text-sm">
+                                    <div className="flex items-center gap-1.5">
+                                        <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                         <span>Sent: {formatDisplayDateTime(document.created_at)}</span>
                                     </div>
                                     {document.signed_date && (
-                                        <div className="flex items-center gap-1">
-                                            <CheckCircle className="w-4 h-4" />
+                                        <div className="flex items-center gap-1.5">
+                                            <CheckCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                             <span>Signed: {formatDisplayDateTime(document.signed_date)}</span>
                                         </div>
                                     )}
@@ -148,40 +149,40 @@ export const DocumentDetailView: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="p-6 space-y-6">
+                    <div className="p-4 md:p-6 space-y-5 md:space-y-6">
                         {/* Patient Information */}
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <User className="w-5 h-5 text-blue-600" />
+                            <h2 className="text-base md:text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                <User className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                                 Patient Information
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 rounded-xl p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 bg-slate-50 rounded-xl p-4 border border-slate-100">
                                 <div>
-                                    <div className="text-sm text-slate-500 mb-1">Full Name</div>
-                                    <div className="font-semibold text-slate-900">{document.patient.full_name}</div>
+                                    <div className="text-xs text-slate-500 mb-0.5">Full Name</div>
+                                    <div className="text-sm md:text-base font-semibold text-slate-900">{document.patient.full_name}</div>
                                 </div>
                                 {document.patient.email && (
                                     <div>
-                                        <div className="text-sm text-slate-500 mb-1 flex items-center gap-1">
+                                        <div className="text-xs text-slate-500 mb-0.5 flex items-center gap-1">
                                             <Mail className="w-3 h-3" />
                                             Email
                                         </div>
-                                        <div className="font-medium text-slate-900">{document.patient.email}</div>
+                                        <div className="text-sm font-medium text-slate-900 break-all">{document.patient.email}</div>
                                     </div>
                                 )}
                                 {document.patient.phone && (
                                     <div>
-                                        <div className="text-sm text-slate-500 mb-1 flex items-center gap-1">
+                                        <div className="text-xs text-slate-500 mb-0.5 flex items-center gap-1">
                                             <Phone className="w-3 h-3" />
                                             Phone
                                         </div>
-                                        <div className="font-medium text-slate-900">{document.patient.phone}</div>
+                                        <div className="text-sm font-medium text-slate-900">{document.patient.phone}</div>
                                     </div>
                                 )}
                                 {document.patient.dob && (
                                     <div>
-                                        <div className="text-sm text-slate-500 mb-1">Date of Birth</div>
-                                        <div className="font-medium text-slate-900">{document.patient.dob}</div>
+                                        <div className="text-xs text-slate-500 mb-0.5">Date of Birth</div>
+                                        <div className="text-sm font-medium text-slate-900">{document.patient.dob}</div>
                                     </div>
                                 )}
                             </div>
@@ -189,33 +190,33 @@ export const DocumentDetailView: React.FC = () => {
 
                         {/* Document Details */}
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-blue-600" />
+                            <h2 className="text-base md:text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                <FileText className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                                 Document Details
                             </h2>
-                            <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Doctor Name</span>
-                                    <span className="font-semibold text-slate-900">{document.doctor_name || '--'}</span>
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-2 md:space-y-3">
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
+                                    <span className="text-slate-500 text-xs md:text-sm">Doctor Name</span>
+                                    <span className="text-sm md:text-base font-semibold text-slate-900">{document.doctor_name || '--'}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Clinic Name</span>
-                                    <span className="font-semibold text-slate-900">{document.clinic_name || '--'}</span>
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
+                                    <span className="text-slate-500 text-xs md:text-sm">Clinic Name</span>
+                                    <span className="text-sm md:text-base font-semibold text-slate-900">{document.clinic_name || '--'}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Fields</span>
-                                    <span className="font-semibold text-slate-900">{document.fields?.length || 0} configured</span>
+                                <div className="flex justify-between items-center gap-2">
+                                    <span className="text-slate-500 text-xs md:text-sm">Fields</span>
+                                    <span className="text-sm md:text-base font-semibold text-slate-900">{document.fields?.length || 0} configured</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-slate-500">Link Accessed</span>
-                                    <span className="font-semibold text-slate-900">
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 pt-1.5 border-t border-slate-200/60">
+                                    <span className="text-slate-500 text-xs md:text-sm">Link Accessed</span>
+                                    <span className="text-sm md:text-base font-semibold text-slate-900">
                                         {document.link_accessed ? (
-                                            <span className="text-green-600 flex items-center gap-1">
-                                                <CheckCircle className="w-4 h-4" />
+                                            <span className="text-green-600 flex items-center justify-end sm:justify-start gap-1.5 text-xs md:text-sm">
+                                                <CheckCircle className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                                 Viewed {document.link_accessed_at ? formatDisplayDateTime(document.link_accessed_at) : 'recently'}
                                             </span>
                                         ) : (
-                                            <span className="text-slate-400 font-medium italic">Not viewed yet</span>
+                                            <span className="text-slate-400 font-medium italic text-xs md:text-sm text-right block">Not viewed yet</span>
                                         )}
                                     </span>
                                 </div>
@@ -225,18 +226,18 @@ export const DocumentDetailView: React.FC = () => {
                         {/* Signature */}
                         {document.signature && (
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                <h2 className="text-base md:text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
                                     Patient Signature
                                 </h2>
-                                <div className="bg-slate-50 rounded-xl p-6 border-2 border-green-200">
+                                <div className="bg-green-50/50 rounded-xl p-4 md:p-6 border border-green-200">
                                     <img
                                         src={document.signature}
                                         alt="Patient Signature"
-                                        className="max-w-md mx-auto bg-white border-2 border-slate-200 rounded-lg p-4"
+                                        className="w-full max-w-sm mx-auto bg-white border border-slate-200 shadow-sm rounded-lg p-3 md:p-4"
                                     />
                                     {document.signed_date && (
-                                        <div className="text-center mt-4 text-sm text-slate-600">
+                                        <div className="text-center mt-3 md:mt-4 text-xs md:text-sm font-medium text-slate-600">
                                             Signed on {formatDisplayDateTime(document.signed_date)}
                                         </div>
                                     )}
@@ -247,20 +248,20 @@ export const DocumentDetailView: React.FC = () => {
                         {/* Digital Certificate */}
                         {document.certificate_hash && (
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                                <h2 className="text-base md:text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                                     Digital Certificate
                                 </h2>
-                                <div className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-xl p-6 border-2 border-blue-200">
-                                    <div className="bg-white rounded-lg p-6 shadow-sm space-y-4">
-                                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                                            <span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Certificate ID</span>
-                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">VERIFIED</span>
+                                <div className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-xl p-4 md:p-6 border border-blue-200">
+                                    <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-100 space-y-4">
+                                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                            <span className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-wider">Certificate ID</span>
+                                            <span className="px-2.5 py-1 bg-blue-100/50 text-blue-700 rounded-lg text-[10px] md:text-xs font-bold border border-blue-200/50">VERIFIED</span>
                                         </div>
-                                        <div className="font-mono text-xs text-slate-700 break-all bg-slate-50 p-3 rounded border border-slate-200">
+                                        <div className="font-mono text-[10px] md:text-xs text-slate-700 break-all bg-slate-50 p-3 rounded-lg border border-slate-200/60 shadow-inner">
                                             {document.certificate_hash}
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                                             <div>
                                                 <div className="text-xs text-slate-500 mb-1">Issued To</div>
                                                 <div className="font-semibold text-slate-900 text-sm">{document.patient.full_name}</div>
@@ -272,14 +273,14 @@ export const DocumentDetailView: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="pt-3 border-t border-slate-100">
-                                            <div className="text-xs text-slate-500 mb-2">Document Hash (SHA-256)</div>
-                                            <div className="font-mono text-[10px] text-slate-600 break-all bg-slate-50 p-2 rounded">
-                                                {document.certificate_hash.substring(0, 32)}...{document.certificate_hash.substring(document.certificate_hash.length - 32)}
+                                        <div className="pt-4 border-t border-slate-100">
+                                            <div className="text-xs text-slate-500 mb-1.5">Document Hash (SHA-256)</div>
+                                            <div className="font-mono text-[10px] text-slate-500 break-all bg-slate-50 p-2.5 rounded-lg">
+                                                {document.certificate_hash.substring(0, 32)}...<span className="hidden sm:inline">{document.certificate_hash.substring(document.certificate_hash.length - 32)}</span>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 text-xs text-slate-500 pt-2">
-                                            <CheckCircle className="w-3 h-3 text-green-600" />
+                                        <div className="flex items-start md:items-center gap-2 text-xs text-slate-500 pt-3 opacity-80">
+                                            <CheckCircle className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5 md:mt-0" />
                                             <span>This certificate is cryptographically secured and tamper-proof</span>
                                         </div>
                                     </div>
@@ -287,14 +288,14 @@ export const DocumentDetailView: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Download Signed PDF — always visible for signed/completed docs */}
+                        {/* Download Signed PDF */}
                         {(document.status === 'SIGNED' || document.status === 'COMPLETED') && (
-                            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-5">
-                                <h2 className="text-lg font-bold text-green-900 mb-3 flex items-center gap-2">
-                                    <Download className="w-5 h-5" />
+                            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 md:p-5">
+                                <h2 className="text-base md:text-lg font-bold text-emerald-900 mb-2 flex items-center gap-2">
+                                    <Download className="w-4 h-4 md:w-5 md:h-5 text-emerald-600" />
                                     Signed Document
                                 </h2>
-                                <p className="text-sm text-green-700 mb-4">
+                                <p className="text-xs md:text-sm text-emerald-700/80 mb-4">
                                     This document has been signed. Download the signed PDF with the embedded certificate.
                                 </p>
                                 <button
@@ -311,7 +312,7 @@ export const DocumentDetailView: React.FC = () => {
                                             alert(e?.message || 'Download failed');
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors shadow-sm"
+                                    className="w-full sm:w-auto flex justify-center items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
                                 >
                                     <Download className="w-4 h-4" />
                                     Download Signed PDF
@@ -321,23 +322,26 @@ export const DocumentDetailView: React.FC = () => {
 
                         {/* Document Preview */}
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900 mb-4">Document Preview</h2>
-                            <div className="bg-slate-50 rounded-xl p-6">
+                            <h2 className="text-base md:text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                <Eye className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+                                Document Preview
+                            </h2>
+                            <div className="bg-slate-50 rounded-xl p-4 md:p-6 border border-slate-100">
                                 {document.status === 'SIGNED' || document.status === 'COMPLETED' ? (
                                     document.file_url ? (
                                         <div className="space-y-4">
                                             {!showPreview ? (
-                                                <div className="flex justify-center py-10 bg-white rounded-lg border border-slate-200 shadow-inner">
+                                                <div className="flex justify-center p-8 bg-white rounded-xl border border-slate-200 shadow-sm">
                                                     <button
                                                         onClick={() => setShowPreview(true)}
-                                                        className="flex items-center gap-2 px-6 py-3 bg-blue-50 text-blue-600 font-bold rounded-lg hover:bg-blue-100 transition-colors shadow-sm"
+                                                        className="flex items-center gap-2 px-5 md:px-6 py-2.5 md:py-3 bg-blue-50 text-blue-600 text-sm md:text-base font-bold rounded-lg hover:bg-blue-100 transition-colors shadow-sm w-full sm:w-auto justify-center"
                                                     >
-                                                        <FileText className="w-5 h-5" />
+                                                        <FileText className="w-4 h-4 md:w-5 md:h-5" />
                                                         Show Document Preview
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <div className="relative w-full rounded-lg overflow-hidden border border-slate-200 bg-white">
+                                                <div className="relative w-full rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
                                                     <DocumentViewer
                                                         fileUrl={document.file_url}
                                                         fields={document.fields || []}
@@ -349,36 +353,36 @@ export const DocumentDetailView: React.FC = () => {
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="bg-white rounded-xl border-2 border-dashed border-slate-300 p-12">
+                                        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-8 md:p-12">
                                             <div className="text-center space-y-3">
-                                                <FileText className="w-16 h-16 text-slate-300 mx-auto" />
-                                                <div className="text-slate-900 font-bold text-lg">Document Summary</div>
-                                                <div className="text-slate-600 space-y-2 max-w-md mx-auto">
-                                                    <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
+                                                <FileText className="w-12 h-12 md:w-16 md:h-16 text-slate-300 mx-auto" />
+                                                <div className="text-slate-900 font-bold text-base md:text-lg">Document Summary</div>
+                                                <div className="text-slate-600 space-y-2 max-w-md mx-auto text-sm">
+                                                    <div className="flex justify-between px-3 md:px-4 py-2 bg-slate-50 rounded-lg">
                                                         <span className="text-slate-500">Procedure:</span>
-                                                        <span className="font-semibold">{document.procedure_name}</span>
+                                                        <span className="font-semibold text-right max-w-[60%] truncate">{document.procedure_name}</span>
                                                     </div>
-                                                    <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
+                                                    <div className="flex justify-between px-3 md:px-4 py-2 bg-slate-50 rounded-lg">
                                                         <span className="text-slate-500">Status:</span>
                                                         <span className="font-semibold capitalize">{document.status}</span>
                                                     </div>
-                                                    <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
+                                                    <div className="flex justify-between px-3 md:px-4 py-2 bg-slate-50 rounded-lg">
                                                         <span className="text-slate-500">Patient:</span>
-                                                        <span className="font-semibold">{document.patient.full_name}</span>
+                                                        <span className="font-semibold text-right max-w-[60%] truncate">{document.patient.full_name}</span>
                                                     </div>
-                                                    <div className="flex justify-between px-4 py-2 bg-slate-50 rounded-lg">
+                                                    <div className="flex flex-col sm:flex-row justify-between sm:items-center px-3 md:px-4 py-2 bg-slate-50 rounded-lg gap-1">
                                                         <span className="text-slate-500">Created:</span>
-                                                        <span className="font-semibold">{formatDisplayDate(document.created_at)}</span>
+                                                        <span className="font-semibold text-xs md:text-sm text-right">{formatDisplayDate(document.created_at)}</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     )
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center py-12 px-4 bg-white rounded-lg border-2 border-dashed border-slate-300">
-                                        <FileText className="w-12 h-12 text-slate-300 mb-3" />
-                                        <h3 className="text-lg font-bold text-slate-700">Not signed yet</h3>
-                                        <p className="text-sm text-slate-500 text-center max-w-sm mt-2">
+                                    <div className="flex flex-col items-center justify-center p-8 md:py-12 px-4 bg-white rounded-xl border border-dashed border-slate-300">
+                                        <FileText className="w-10 h-10 md:w-12 md:h-12 text-slate-300 mb-3" />
+                                        <h3 className="text-base md:text-lg font-bold text-slate-700">Not signed yet</h3>
+                                        <p className="text-xs md:text-sm text-slate-500 text-center max-w-sm mt-2">
                                             The document preview will be available here once the patient has completed signing.
                                         </p>
                                     </div>
@@ -389,21 +393,21 @@ export const DocumentDetailView: React.FC = () => {
                         {/* Audit Trail */}
                         {document.audit_trail && document.audit_trail.length > 0 && (
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                    <Clock className="w-5 h-5 text-blue-600" />
+                                <h2 className="text-base md:text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                                    <Clock className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
                                     Audit Trail
                                 </h2>
                                 <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-200">
                                     {document.audit_trail.map((event: any, idx: number) => (
-                                        <div key={idx} className={`flex items-start gap-4 px-5 py-3.5 ${idx !== document.audit_trail.length - 1 ? 'border-b border-slate-200' : ''}`}>
+                                        <div key={idx} className={`flex items-start gap-3 md:gap-4 px-4 md:px-5 py-3 md:py-3.5 ${idx !== document.audit_trail.length - 1 ? 'border-b border-slate-200' : ''}`}>
                                             <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
                                             <div className="flex-1 min-w-0">
-                                                <div className="font-semibold text-slate-800 text-sm capitalize">{(event.action || event.event_type || '').replace(/_/g, ' ')}</div>
-                                                {event.details && <div className="text-xs text-slate-500 mt-0.5 truncate" title={typeof event.details === 'string' ? event.details : JSON.stringify(event.details)}>{formatAuditDetail(event.details)}</div>}
+                                                <div className="font-semibold text-slate-800 text-xs md:text-sm capitalize leading-tight mb-0.5">{(event.action || event.event_type || '').replace(/_/g, ' ')}</div>
+                                                {event.details && <div className="text-[10px] md:text-xs text-slate-500 truncate" title={typeof event.details === 'string' ? event.details : JSON.stringify(event.details)}>{formatAuditDetail(event.details)}</div>}
                                             </div>
-                                            <div className="text-right flex-shrink-0">
-                                                <div className="text-xs text-slate-600 font-medium">{formatDisplayDateTime(event.timestamp || event.created_at)}</div>
-                                                {event.ip_address && <div className="text-[10px] text-slate-400 mt-0.5">{event.ip_address}</div>}
+                                            <div className="text-right flex-shrink-0 ml-2">
+                                                <div className="text-[10px] md:text-xs text-slate-600 font-medium">{formatDisplayDateTime(event.timestamp || event.created_at)}</div>
+                                                {event.ip_address && <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5">{event.ip_address}</div>}
                                             </div>
                                         </div>
                                     ))}
@@ -413,11 +417,11 @@ export const DocumentDetailView: React.FC = () => {
 
                         {/* Patient Link - Hidden for signed/completed docs */}
                         {document.status !== 'SIGNED' && document.status !== 'COMPLETED' && (
-                            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-                                <div className="text-sm font-bold text-blue-900 mb-2">Patient Link</div>
+                            <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-4">
+                                <div className="text-xs md:text-sm font-bold text-blue-900 mb-2.5">Patient Link</div>
                                 {document.patient_link ? (
-                                    <div className="space-y-2">
-                                        <div className="bg-white rounded-lg p-3 font-mono text-xs text-slate-600 break-all">
+                                    <div className="space-y-3">
+                                        <div className="bg-white rounded-lg p-3 font-mono text-[10px] md:text-xs text-slate-600 break-all border border-blue-100 shadow-sm">
                                             {document.patient_link}
                                         </div>
                                         <button
@@ -425,13 +429,13 @@ export const DocumentDetailView: React.FC = () => {
                                                 navigator.clipboard.writeText(document.patient_link);
                                                 alert('Link copied to clipboard!');
                                             }}
-                                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                            className="w-full sm:w-auto inline-flex justify-center items-center gap-1.5 px-4 py-2 bg-blue-100/50 hover:bg-blue-200 text-xs text-blue-700 font-bold rounded-lg transition-colors"
                                         >
                                             📋 Copy Link
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="bg-white rounded-lg p-3 text-sm text-slate-500 text-center">
+                                    <div className="bg-white rounded-lg p-4 text-xs md:text-sm text-slate-500 text-center border border-slate-100">
                                         No patient link generated yet
                                     </div>
                                 )}

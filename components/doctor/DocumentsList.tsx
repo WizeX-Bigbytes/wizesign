@@ -155,8 +155,8 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                         </button>
                     ))}
                 </div>
-                <div className="overflow-x-auto min-h-0 flex-1">
-                    <table className="w-full text-left border-collapse">
+                <div className="hidden md:block overflow-x-auto min-h-0 flex-1">
+                    <table className="w-full text-left border-collapse min-w-[800px] whitespace-nowrap md:whitespace-normal">
                         <thead>
                             <tr className={`text-[11px] uppercase tracking-[0.1em] font-bold ${isDark ? 'text-slate-500 border-slate-800' : 'text-slate-400 border-slate-100'}`}>
                                 <th className="px-8 py-5 border-b font-bold">Document</th>
@@ -324,6 +324,98 @@ export const DocumentsList: React.FC<DocumentsListProps> = ({
                             })}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile View (Cards) */}
+                <div className={`md:hidden flex-1 overflow-y-auto p-3 space-y-3 ${isDark ? 'bg-slate-900/50' : 'bg-slate-50/50'}`}>
+                    {isLoading && (
+                        <div className="flex flex-col items-center justify-center space-y-3 py-10">
+                            <div className="animate-spin w-6 h-6 border-3 border-blue-600 border-t-transparent rounded-full"></div>
+                            <span className="text-xs font-medium text-slate-500">Searching documents...</span>
+                        </div>
+                    )}
+
+                    {!isLoading && documents.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-10 text-center">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 shadow-inner ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-slate-50 border border-slate-100'}`}>
+                                <FileText className={`w-5 h-5 ${isDark ? 'text-slate-500' : 'text-slate-300'}`} />
+                            </div>
+                            <h3 className={`font-bold text-sm mb-1 ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>No documents found</h3>
+                            <p className="text-slate-500 text-xs px-4">
+                                {searchQuery
+                                    ? `No results for "${searchQuery}".`
+                                    : statusFilter === 'ALL'
+                                        ? "You haven't sent any consent documents yet."
+                                        : `There are no documents currently in the ${statusFilter} status.`
+                                }
+                            </p>
+                        </div>
+                    )}
+
+                    {!isLoading && documents.map((doc) => {
+                        const statusStyle = getStatusStyle(doc.status);
+
+                        return (
+                            <div
+                                key={doc.id}
+                                onClick={() => onViewDocument(doc.id)}
+                                className={`p-4 rounded-2xl border transition-all active:scale-[0.98] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}
+                            >
+                                <div className="flex justify-between items-start mb-3 gap-3">
+                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${isDark ? 'bg-slate-900 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                                            <FileText className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                            <span className={`font-bold text-sm leading-snug break-words ${isDark ? 'text-slate-200' : 'text-slate-900'}`}>
+                                                {doc.procedure_name}
+                                            </span>
+                                            <span className={`text-[10px] font-medium tracking-wide mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                ID: {doc.id.split('-')[0].toUpperCase()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} animate-pulse`}></span>
+                                        {doc.status}
+                                    </div>
+                                </div>
+
+                                <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-xl ${isDark ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isDark ? 'bg-indigo-950/50 text-indigo-400' : 'bg-white text-indigo-700 shadow-sm border border-indigo-100'}`}>
+                                        {doc.patient.full_name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span className={`text-xs font-bold truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                                        {doc.patient.full_name}
+                                    </span>
+                                </div>
+
+                                <div className={`flex justify-between items-center mt-1 pt-3 border-t ${isDark ? 'border-slate-700/50' : 'border-slate-100/50'}`}>
+                                    <div className="flex items-center">
+                                        {doc.signed_date ? (
+                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-500">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                <span>Signed {formatDisplayDate(doc.signed_date)}</span>
+                                            </div>
+                                        ) : doc.link_accessed_at ? (
+                                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-500">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                <span>Viewed {formatDisplayDate(doc.link_accessed_at)}</span>
+                                            </div>
+                                        ) : (
+                                            <div className={`flex items-center gap-1.5 text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                <span>Sent {formatDisplayDate(doc.created_at)}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button className={`p-1.5 rounded-lg text-xs font-bold transition-all ${isDark ? 'bg-slate-900 text-slate-300' : 'bg-slate-100 text-slate-500'}`}>
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
 
                 {/* Pagination / Footer Placeholder */}
