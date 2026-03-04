@@ -6,7 +6,7 @@ from app.config import settings
 class WizeChatService:
     """Service to send WhatsApp messages via WizeChat E-Signature API"""
 
-    BASE_URL = "https://chat.test.wizex.tech"
+    BASE_URL = settings.WIZECHAT_API_URL or "https://chat.test.wizex.tech"
 
     def __init__(self):
         self.api_key = settings.WIZECHAT_API_KEY
