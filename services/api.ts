@@ -212,6 +212,15 @@ export const api = {
     return response.json();
   },
 
+  async checkWizeChatConnection() {
+    const response = await fetch(`${API_BASE_URL}/hospitals/me/check-wizechat`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error('Failed to check WizeChat connection');
+    return response.json();
+  },
+
   updateTemplate: async (id: string, data: any) => {
      const response = await fetch(`${API_BASE_URL}/templates/${id}`, {
         method: 'PATCH',

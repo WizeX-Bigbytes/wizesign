@@ -74,6 +74,25 @@ class WizeChatService:
 
     # ─── Public Methods ───────────────────────────────────────────────────────
 
+    async def check_connection(self, inbox_id: str, api_key: str) -> dict:
+        """
+        Validate an API key + inbox ID by calling WizeChat's /api/messages/check.
+        Returns the raw WizeChat response: { success, connected, status, inbox_name, ... }
+        Never raises — returns { success: False, connected: False, error: ... } on failure.
+        """
+        url = f"{self.BASE_URL}/api/messages/check"
+        headers = self._get_headers(api_key)
+        payload = {"inbox_id": inbox_id}
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(url, json=payload, headers=headers, timeout=15.0)
+                # WizeChat returns 200 even for auth errors, body has success/connected
+                return response.json()
+            except Exception as e:
+                return {"success": False, "connected": False, "error": str(e), "message": "Could not reach WizeChat"}
+
+
     async def send_signature_request(
         self,
         inbox_id: str,

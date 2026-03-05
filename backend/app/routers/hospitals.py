@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import User, Hospital, RoleEnum
 from app.schemas import HospitalResponse, HospitalSettingsUpdate
 from app.config import settings
+from app.services.wizechat import wizechat_service
 
 router = APIRouter(prefix="/api/hospitals", tags=["hospitals"])
 
@@ -135,3 +136,43 @@ async def get_wizechat_status(
         "has_inbox_id": bool(config.get("inbox_id")),
         "has_template_id": bool(config.get("template_id"))
     }
+
+
+@router.post("/me/check-wizechat")
+async def check_wizechat_connection(
+    current_user: User = Depends(get_current_user_from_token),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Validate the hospital's WizeChat credentials by calling WizeChat's /api/messages/check.
+    Returns real connected status (not just whether fields are filled).
+    """
+    if not current_user.hospital_id:
+        return {"success": False, "connected": False, "error": "No hospital", "message": "User not associated with a hospital"}
+
+    result = await db.execute(select(Hospital).where(Hospital.id == current_user.hospital_id))
+    hospital = result.scalar_one_or_none()
+
+    if not hospital:
+        return {"success": False, "connected": False, "error": "Hospital not found", "message": "Hospital not found"}
+
+    config = hospital.wizechat_config or {}
+    api_key = config.get("api_key")
+    inbox_id = config.get("inbox_id")
+
+    if not api_key or not inbox_id:
+        missing = []
+        if not api_key:
+            missing.append("API Key")
+        if not inbox_id:
+            missing.append("Inbox ID")
+        return {
+            "success": False,
+            "connected": False,
+            "error": "Missing configuration",
+            "message": f"Missing: {', '.join(missing)}"
+        }
+
+    # Proxy to WizeChat's check endpoint
+    result = await wizechat_service.check_connection(inbox_id=inbox_id, api_key=api_key)
+    return result

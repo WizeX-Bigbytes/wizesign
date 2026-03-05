@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
-import { Save, MessageSquare, Key, Hash, FileText, User, Building, ArrowLeft } from 'lucide-react';
+import { Save, MessageSquare, Key, Hash, FileText, User, Building, ArrowLeft, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigate } from 'react-router-dom';
 
 export const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [checkingConnection, setCheckingConnection] = useState(false);
     const [profile, setProfile] = useState<any>(null);
     const [hospital, setHospital] = useState<any>(null);
     const [wizechatStatus, setWizechatStatus] = useState<any>(null);
+    const [connectionCheck, setConnectionCheck] = useState<any>(null);
 
     const [formData, setFormData] = useState({
         api_key: '',
@@ -58,16 +60,33 @@ export const SettingsPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setConnectionCheck(null);
 
         try {
             await api.updateHospitalSettings({
                 wizechat_config: formData
             });
-            toast.success("Settings saved successfully!");
+            toast.success("Settings saved! Checking connection...");
 
-            // Refresh status after save
+            // Refresh basic status
             const statusRes = await api.getWizeChatStatus();
             setWizechatStatus(statusRes);
+
+            // Run real connection check against WizeChat
+            setCheckingConnection(true);
+            try {
+                const checkRes = await api.checkWizeChatConnection();
+                setConnectionCheck(checkRes);
+                if (checkRes.connected) {
+                    toast.success(`Connected to "${checkRes.inbox_name || 'WizeChat'}" ✅`);
+                } else {
+                    toast.error(checkRes.message || checkRes.error || 'WizeChat connection failed');
+                }
+            } catch {
+                setConnectionCheck({ connected: false, message: 'Could not reach WizeChat' });
+            } finally {
+                setCheckingConnection(false);
+            }
         } catch (error) {
             console.error("Failed to save settings", error);
             toast.error("Failed to save settings");
@@ -142,15 +161,30 @@ export const SettingsPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {wizechatStatus && (
+                            {checkingConnection ? (
+                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 border ${isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                    <Loader className="w-3 h-3 animate-spin" />
+                                    Checking...
+                                </div>
+                            ) : connectionCheck ? (
+                                <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 border transition-all ${connectionCheck.connected
+                                    ? (isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-100')
+                                    : (isDark ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-700 border-rose-100')
+                                    }`}>
+                                    {connectionCheck.connected
+                                        ? <CheckCircle className="w-3 h-3" />
+                                        : <XCircle className="w-3 h-3" />}
+                                    {connectionCheck.connected ? 'Connected' : 'Not Connected'}
+                                </div>
+                            ) : wizechatStatus ? (
                                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 border transition-all ${wizechatStatus.configured
                                     ? (isDark ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-100')
                                     : (isDark ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-700 border-rose-100')
                                     }`}>
                                     <span className={`w-1.5 h-1.5 rounded-full ${wizechatStatus.configured ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`}></span>
-                                    {wizechatStatus.configured ? 'Connected' : 'Disconnected'}
+                                    {wizechatStatus.configured ? 'Configured' : 'Not Configured'}
                                 </div>
-                            )}
+                            ) : null}
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-8 space-y-8">
@@ -231,15 +265,27 @@ export const SettingsPage: React.FC = () => {
                                 </div>
                             </div>
 
+                            {connectionCheck && !connectionCheck.connected && connectionCheck.message && (
+                                <p className={`text-xs font-medium px-1 -mt-4 ${isDark ? 'text-rose-400' : 'text-rose-600'
+                                    }`}>
+                                    ⚠️ {connectionCheck.message}
+                                </p>
+                            )}
+                            {connectionCheck && connectionCheck.connected && connectionCheck.inbox_name && (
+                                <p className={`text-xs font-medium px-1 -mt-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'
+                                    }`}>
+                                    ✅ Inbox: {connectionCheck.inbox_name}{connectionCheck.phone_number ? ` · ${connectionCheck.phone_number}` : ''}
+                                </p>
+                            )}
                             <div className="flex justify-end pt-4">
                                 <button
                                     type="submit"
-                                    disabled={loading}
+                                    disabled={loading || checkingConnection}
                                     className={`inline-flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] text-sm font-bold transition-all shadow-xl active:scale-95 disabled:opacity-50 ${isDark ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/40' : 'bg-slate-950 hover:bg-slate-900 text-white shadow-black/20'
                                         }`}
                                 >
                                     <Save className="w-5 h-5" />
-                                    {loading ? 'Saving...' : 'Save Config'}
+                                    {loading ? 'Saving...' : checkingConnection ? 'Checking...' : 'Save Config'}
                                 </button>
                             </div>
                         </form>
