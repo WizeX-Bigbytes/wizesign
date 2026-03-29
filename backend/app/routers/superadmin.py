@@ -6,7 +6,7 @@ import uuid
 
 from app.database import get_db
 from app.models import User, Hospital, Document, Patient, RoleEnum
-from app.schemas import SuperAdminStatsResponse, UserResponse, HospitalResponse
+from app.schemas import SuperAdminStatsResponse, UserResponse, HospitalResponse, HospitalTwilioSettingsUpdate
 from app.routers.auth import get_current_user_from_token
 
 router = APIRouter(prefix="/api/superadmin", tags=["superadmin"])
@@ -79,3 +79,58 @@ async def list_all_users(
     """List all users across the platform."""
     result = await db.execute(select(User).offset(skip).limit(limit).order_by(User.created_at.desc()))
     return result.scalars().all()
+
+
+@router.get("/hospitals/{hospital_id}", response_model=HospitalResponse)
+async def get_hospital_detail(
+    hospital_id: str,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_superadmin)
+):
+    """Get a single hospital's details including config."""
+    try:
+        h_uuid = uuid.UUID(hospital_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid hospital ID")
+
+    result = await db.execute(select(Hospital).where(Hospital.id == h_uuid))
+    hospital = result.scalar_one_or_none()
+
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Hospital not found")
+
+    return hospital
+
+
+@router.patch("/hospitals/{hospital_id}/twilio-config", response_model=HospitalResponse)
+async def update_hospital_twilio_config(
+    hospital_id: str,
+    payload: HospitalTwilioSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_superadmin)
+):
+    """Update Twilio config for a hospital (SuperAdmin only)."""
+    try:
+        h_uuid = uuid.UUID(hospital_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid hospital ID")
+
+    result = await db.execute(select(Hospital).where(Hospital.id == h_uuid))
+    hospital = result.scalar_one_or_none()
+
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Hospital not found")
+
+    # Merge with existing config (preserve fields not being updated)
+    current_config = hospital.twilio_config or {}
+    new_config = payload.twilio_config.model_dump(exclude_unset=True)
+
+    # Filter out empty strings (treat as "clear this field")
+    cleaned = {k: v for k, v in new_config.items() if v is not None}
+
+    hospital.twilio_config = {**current_config, **cleaned}
+
+    await db.commit()
+    await db.refresh(hospital)
+    return hospital
+

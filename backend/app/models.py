@@ -37,6 +37,9 @@ class Hospital(Base):
     # WizeChat Integration Config
     wizechat_config = Column(JSON, nullable=True) # { api_key, inbox_id, template_id, template_name }
     
+    # Twilio OTP Config
+    twilio_config = Column(JSON, nullable=True)  # { account_sid, auth_token, verify_service_sid }
+    
     joined_date = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -163,10 +166,11 @@ class Document(Base):
     certificate_issued_at = Column(DateTime, nullable=True)
     
     # OTP Verification
-    otp_code = Column(String, nullable=True)  # Store hashed OTP
+    otp_code = Column(String, nullable=True)  # Store hashed OTP (WizeChat flow only)
     otp_sent_at = Column(DateTime, nullable=True)
     otp_verified_at = Column(DateTime, nullable=True)
     otp_attempts = Column(Integer, default=0)
+    otp_channel = Column(String, nullable=True)  # 'sms', 'whatsapp', 'wizechat'
 
     # Fields (JSON)
     fields = Column(JSON, nullable=True)

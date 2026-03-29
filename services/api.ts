@@ -258,6 +258,20 @@ export const api = {
     return handleResponse<any[]>(response);
   },
 
+  getHospitalDetail: async (hospitalId: string) => {
+    const response = await fetch(`${API_BASE_URL}/superadmin/hospitals/${hospitalId}`, { headers: getAuthHeaders() });
+    return handleResponse<any>(response);
+  },
+
+  updateHospitalTwilioConfig: async (hospitalId: string, twilioConfig: { account_sid?: string; auth_token?: string; verify_service_sid?: string }) => {
+    const response = await fetch(`${API_BASE_URL}/superadmin/hospitals/${hospitalId}/twilio-config`, {
+      method: 'PATCH',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ twilio_config: twilioConfig }),
+    });
+    return handleResponse<any>(response);
+  },
+
   resolveUrl: (url: string) => {
     // If the URL is already absolute, return it
     if (url.startsWith('http')) return url;
