@@ -20,6 +20,7 @@ from app.schemas import (
 )
 from app.config import settings
 from app.services.wizechat import wizechat_service
+from app.services.twilio_otp import twilio_otp_service
 from app.services.pdf_generator import pdf_generator_service
 from app.schemas_wizechat import SendDocumentLinkRequest, WhatsAppResponse
 from fastapi.responses import FileResponse
@@ -367,10 +368,10 @@ async def get_document_by_token(
             detail="Invalid token format"
         )
     
-    # Find document by secure_token and eagerly load patient relationship
+    # Find document by secure_token and eagerly load patient + hospital
     result = await db.execute(
         select(Document)
-        .options(selectinload(Document.patient))
+        .options(selectinload(Document.patient), selectinload(Document.hospital))
         .where(Document.secure_token == token_uuid)
     )
     document = result.scalar_one_or_none()
@@ -410,11 +411,16 @@ async def get_document_by_token(
             document.audit_trail = [audit_event]
         
         await db.commit()
-        await db.refresh(document)
+        await db.refresh(document, ["patient", "hospital"])
     
-    # Load patient relationship using selectinload or joinedload in query instead
-    # The patient relationship should be eagerly loaded in the initial query
-    # For now, access it directly (SQLAlchemy will lazy load if needed)
+    # Check if Twilio is configured for this hospital
+    twilio_configured = False
+    if document.hospital and document.hospital.twilio_config:
+        tc = document.hospital.twilio_config
+        twilio_configured = bool(tc.get("account_sid") and tc.get("auth_token") and tc.get("verify_service_sid"))
+    
+    # Attach the flag as a dynamic attribute for the response
+    document.twilio_configured = twilio_configured
     
     return document
 
@@ -758,10 +764,16 @@ async def download_original_document(
 @router.post("/{document_id}/send-otp")
 async def send_otp(
     document_id: str,
+    channel: str = "sms",
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Send OTP verification code to patient via WizeChat WhatsApp.
+    Send OTP verification code to patient.
+    
+    Query params:
+        channel: 'sms' | 'whatsapp' | 'wizechat'
+            - sms/whatsapp: Uses Twilio Verify API (if configured)
+            - wizechat: Uses existing WizeChat WhatsApp flow
     """
     
     try:
@@ -791,75 +803,111 @@ async def send_otp(
             detail="Patient phone number not available"
         )
     
-    # Generate 6-digit OTP
-    otp_code = f"{random.randint(100000, 999999)}"
+    phone = document.patient.phone
     
-    print(f"📝 OTP Generation: document_id={document_id}, patient_phone={document.patient.phone}")
+    print(f"📝 OTP Send: document_id={document_id}, phone={phone}, channel={channel}")
     print(f"📝 APP_ENV={settings.APP_ENV}")
     
-    # Hash OTP for storage (using SHA-256)
-    otp_hash = hashlib.sha256(otp_code.encode()).hexdigest()
-    
-    # Store OTP in database
-    document.otp_code = otp_hash
-    document.otp_sent_at = datetime.utcnow()
-    document.otp_attempts = 0
-    document.otp_verified_at = None
-    
-    await db.commit()
-    
-    # Send OTP via wizechat
-    try:
-        print(f"🔍 Checking hospital wizechat_config...")
-        print(f"🔍 Hospital exists: {document.hospital is not None}")
-        print(f"🔍 Hospital wizechat_config: {document.hospital.wizechat_config if document.hospital else 'N/A'}")
+    # ── Twilio path (SMS or WhatsApp via Twilio Verify) ──────────────────
+    if channel in ("sms", "whatsapp"):
+        twilio_config = document.hospital.twilio_config if document.hospital else None
         
-        if document.hospital and document.hospital.wizechat_config:
-            config = document.hospital.wizechat_config
-            inbox_id = config.get("inbox_id")
-            api_key = config.get("api_key")
+        if not twilio_config or not twilio_config.get("account_sid"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Twilio is not configured for this hospital. Please contact your administrator."
+            )
+        
+        try:
+            # Record channel on document (Twilio manages the OTP itself)
+            document.otp_channel = channel
+            document.otp_sent_at = datetime.utcnow()
+            document.otp_attempts = 0
+            document.otp_verified_at = None
+            document.otp_code = None  # Twilio manages codes, no local hash needed
+            await db.commit()
             
-            print(f"🔍 Config found - inbox_id: {inbox_id}, api_key: {api_key[:10] if api_key else None}...")
-            print(f"🔍 Settings.APP_ENV = '{settings.APP_ENV}'")
-            print(f"🔍 Dev mode check: {settings.APP_ENV == 'development'}")
+            twilio_result = await twilio_otp_service.send_verification(
+                to_phone=phone,
+                channel=channel,
+                twilio_config=twilio_config,
+            )
             
-            if inbox_id:
-                if settings.APP_ENV == "development":
-                    print(f"\n🔐 DEV MODE - OTP for {document.patient.phone}: {otp_code}")
-                    print(f"   Document: {document.procedure_name}")
-                    print(f"   Patient: {document.patient.full_name}")
+            return {
+                "success": True,
+                "message": f"OTP sent via {channel.upper()}",
+                "channel": channel,
+            }
+        except Exception as e:
+            print(f"❌ Twilio OTP Error: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to send OTP via {channel}: {str(e)}"
+            )
+    
+    # ── WizeChat path (existing WhatsApp via WizeChat) ───────────────────
+    else:
+        # Generate 6-digit OTP (we manage it ourselves for WizeChat)
+        otp_code = f"{random.randint(100000, 999999)}"
+        
+        print(f"📝 WizeChat OTP Generation: patient_phone={phone}")
+        
+        # Hash OTP for storage (using SHA-256)
+        otp_hash = hashlib.sha256(otp_code.encode()).hexdigest()
+        
+        # Store OTP in database
+        document.otp_code = otp_hash
+        document.otp_sent_at = datetime.utcnow()
+        document.otp_attempts = 0
+        document.otp_verified_at = None
+        document.otp_channel = "wizechat"
+        
+        await db.commit()
+        
+        # Send OTP via WizeChat
+        try:
+            if document.hospital and document.hospital.wizechat_config:
+                config = document.hospital.wizechat_config
+                inbox_id = config.get("inbox_id")
+                api_key = config.get("api_key")
                 
-                # In production, send via WizeChat
-                await wizechat_service.send_otp(
-                    inbox_id=inbox_id,
-                    to_phone=document.patient.phone,
-                    otp_code=otp_code,
-                    document_name=document.procedure_name or "Medical Consent Form",
-                    expires_in_minutes=10,
-                    api_key=api_key
-                )
-                
-                response = {"success": True, "message": "OTP sent successfully"}
-                
-                return response
+                if inbox_id:
+                    if settings.APP_ENV == "development":
+                        print(f"\n🔐 DEV MODE - OTP for {phone}: {otp_code}")
+                        print(f"   Document: {document.procedure_name}")
+                        print(f"   Patient: {document.patient.full_name}")
+                    
+                    # Send via WizeChat
+                    await wizechat_service.send_otp(
+                        inbox_id=inbox_id,
+                        to_phone=phone,
+                        otp_code=otp_code,
+                        document_name=document.procedure_name or "Medical Consent Form",
+                        expires_in_minutes=10,
+                        api_key=api_key
+                    )
+                    
+                    response = {"success": True, "message": "OTP sent successfully", "channel": "wizechat"}
+                    
+                    return response
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="WizeChat inbox_id not configured"
+                    )
             else:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="WizeChat inbox_id not configured"
+                    detail="WizeChat not configured for this hospital"
                 )
-        else:
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"❌ OTP Error: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="WizeChat not configured for this hospital"
+                detail=f"Failed to send OTP: {str(e)}"
             )
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"❌ OTP Error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to send OTP: {str(e)}"
-        )
 
 
 @router.post("/{document_id}/verify-otp")
@@ -870,6 +918,7 @@ async def verify_otp(
 ):
     """
     Verify OTP code entered by patient.
+    Routes to Twilio Verify or WizeChat hash-check based on otp_channel.
     """
     
     try:
@@ -881,7 +930,9 @@ async def verify_otp(
         )
     
     result = await db.execute(
-        select(Document).where(Document.id == doc_uuid)
+        select(Document)
+        .options(selectinload(Document.patient), selectinload(Document.hospital))
+        .where(Document.id == doc_uuid)
     )
     document = result.scalar_one_or_none()
     
@@ -891,7 +942,7 @@ async def verify_otp(
             detail="Document not found"
         )
     
-    if not document.otp_code or not document.otp_sent_at:
+    if not document.otp_sent_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No OTP has been sent for this document"
@@ -905,29 +956,77 @@ async def verify_otp(
             detail="OTP has expired. Please request a new code."
         )
     
-    # Check attempts limit
-    if document.otp_attempts >= 5:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many failed attempts. Please request a new OTP."
-        )
+    # ── Twilio Verify path ───────────────────────────────────────────────
+    if document.otp_channel in ("sms", "whatsapp"):
+        twilio_config = document.hospital.twilio_config if document.hospital else None
+        
+        if not twilio_config:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Twilio configuration not found"
+            )
+        
+        try:
+            check_result = await twilio_otp_service.check_verification(
+                to_phone=document.patient.phone,
+                code=otp_code,
+                twilio_config=twilio_config,
+            )
+            
+            if not check_result.get("success"):
+                document.otp_attempts += 1
+                await db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=check_result.get("message", "Invalid OTP code")
+                )
+            
+            # Mark OTP as verified
+            document.otp_verified_at = datetime.utcnow()
+            await db.commit()
+            
+            return {"success": True, "message": "OTP verified successfully"}
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"❌ Twilio verify error: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
     
-    # Verify OTP
-    otp_hash = hashlib.sha256(otp_code.encode()).hexdigest()
-    
-    if otp_hash != document.otp_code:
-        document.otp_attempts += 1
+    # ── WizeChat hash-check path ─────────────────────────────────────────
+    else:
+        if not document.otp_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No OTP has been sent for this document"
+            )
+        
+        # Check attempts limit
+        if document.otp_attempts >= 5:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed attempts. Please request a new OTP."
+            )
+        
+        # Verify OTP hash
+        otp_hash = hashlib.sha256(otp_code.encode()).hexdigest()
+        
+        if otp_hash != document.otp_code:
+            document.otp_attempts += 1
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OTP code"
+            )
+        
+        # Mark OTP as verified
+        document.otp_verified_at = datetime.utcnow()
         await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OTP code"
-        )
-    
-    # Mark OTP as verified
-    document.otp_verified_at = datetime.utcnow()
-    await db.commit()
-    
-    return {"success": True, "message": "OTP verified successfully"}
+        
+        return {"success": True, "message": "OTP verified successfully"}
 
 
 @router.get("/{document_id}", response_model=DocumentDetailResponse)

@@ -1,26 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../services/api';
-import { Building2, Search, Settings } from 'lucide-react';
-import { format } from 'date-fns';
+import { Building2, Search, Settings, Phone, MessageSquare } from 'lucide-react';
+import { HospitalSettingsModal } from './HospitalSettingsModal';
 
 export const HospitalManager: React.FC = () => {
     const [hospitals, setHospitals] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedHospital, setSelectedHospital] = useState<any>(null);
+
+    const fetchHospitals = async () => {
+        try {
+            const data = await api.listAllHospitals();
+            setHospitals(data);
+        } catch (err) {
+            console.error("Failed to load hospitals", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchHospitals = async () => {
-            try {
-                const data = await api.listAllHospitals();
-                setHospitals(data);
-            } catch (err) {
-                console.error("Failed to load hospitals", err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
         fetchHospitals();
     }, []);
+
+    const handleOpenSettings = async (hospital: any) => {
+        try {
+            // Fetch full hospital details (includes twilio_config)
+            const detail = await api.getHospitalDetail(hospital.id);
+            setSelectedHospital(detail);
+        } catch (err) {
+            // Fallback to table data
+            setSelectedHospital(hospital);
+        }
+    };
+
+    const handleSettingsSaved = () => {
+        setSelectedHospital(null);
+        fetchHospitals(); // Refresh the list
+    };
 
     const filteredHospitals = hospitals.filter(h =>
         h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,18 +73,19 @@ export const HospitalManager: React.FC = () => {
                                 <th className="p-4 pl-6">Hospital Name</th>
                                 <th className="p-4">Tenant ID</th>
                                 <th className="p-4">Status</th>
-                                <th className="p-4">WizeChat Integration</th>
+                                <th className="p-4">WizeChat</th>
+                                <th className="p-4">Twilio OTP</th>
                                 <th className="p-4 text-right pr-6">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-500">Loading hospitals...</td>
+                                    <td colSpan={6} className="p-8 text-center text-slate-500">Loading hospitals...</td>
                                 </tr>
                             ) : filteredHospitals.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-500">No hospitals found.</td>
+                                    <td colSpan={6} className="p-8 text-center text-slate-500">No hospitals found.</td>
                                 </tr>
                             ) : (
                                 filteredHospitals.map((hospital) => (
@@ -88,20 +107,33 @@ export const HospitalManager: React.FC = () => {
                                                 {hospital.status}
                                             </span>
                                         </td>
+                                        {/* WizeChat Column */}
                                         <td className="p-4">
                                             {hospital.wizechat_config?.api_key ? (
                                                 <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-600">
-                                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span> Active
+                                                    <MessageSquare className="w-3.5 h-3.5" />
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Active
                                                 </span>
                                             ) : (
-                                                <span className="text-xs text-slate-400 font-medium">Not Configured</span>
+                                                <span className="text-xs text-slate-400 font-medium">—</span>
+                                            )}
+                                        </td>
+                                        {/* Twilio Column */}
+                                        <td className="p-4">
+                                            {hospital.twilio_config?.account_sid ? (
+                                                <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+                                                    <Phone className="w-3.5 h-3.5" />
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 font-medium">—</span>
                                             )}
                                         </td>
                                         <td className="p-4 pr-6 text-right">
                                             <button
                                                 className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                                 title="Manage Tenant"
-                                                onClick={() => alert('Tenant settings coming soon')}
+                                                onClick={() => handleOpenSettings(hospital)}
                                             >
                                                 <Settings className="w-5 h-5" />
                                             </button>
@@ -113,6 +145,15 @@ export const HospitalManager: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Settings Modal */}
+            {selectedHospital && (
+                <HospitalSettingsModal
+                    hospital={selectedHospital}
+                    onClose={() => setSelectedHospital(null)}
+                    onSaved={handleSettingsSaved}
+                />
+            )}
         </div>
     );
 };

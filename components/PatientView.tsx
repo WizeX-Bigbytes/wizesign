@@ -98,11 +98,11 @@ export const PatientView: React.FC = () => {
             .catch(() => setIpAddress('Unknown'));
     }, []);
 
-    const handleSendOtp = async () => {
+    const handleSendOtp = async (channel: 'sms' | 'whatsapp' | 'wizechat' = 'sms') => {
         setIsProcessingOtp(true);
         try {
-            // Call real OTP API
-            const response = await fetch(`/api/documents/${consentForm.transactionId}/send-otp`, {
+            // Call OTP API with channel selection
+            const response = await fetch(`/api/documents/${consentForm.transactionId}/send-otp?channel=${channel}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -127,7 +127,7 @@ export const PatientView: React.FC = () => {
             }
         } catch (error) {
             console.error('Error sending OTP:', error);
-            alert('Failed to send OTP. Please try again.');
+            toast.error(error instanceof Error ? error.message : 'Failed to send OTP. Please try again.');
         } finally {
             setIsProcessingOtp(false);
         }
@@ -261,7 +261,9 @@ export const PatientView: React.FC = () => {
                 isProcessing={isProcessingOtp}
                 onSendCode={handleSendOtp}
                 onVerifyCode={handleVerifyOtp}
+                onResend={() => setVerificationStep('START')}
                 patientPhone={patientDetails.phone}
+                hasTwilio={documentData?.twilio_configured || false}
             />
 
             {/* Brand Header */}

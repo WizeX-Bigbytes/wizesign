@@ -143,6 +143,7 @@ class DocumentDetailResponse(BaseModel):
     patient_link: Optional[str] = None
     created_at: datetime
     link_accessed_at: Optional[datetime] = None
+    twilio_configured: Optional[bool] = False
 
     class Config:
         from_attributes = True
@@ -262,17 +263,26 @@ class WizeChatConfig(BaseModel):
     template_id: Optional[str] = None
     template_name: Optional[str] = None
 
+class TwilioConfig(BaseModel):
+    account_sid: Optional[str] = None
+    auth_token: Optional[str] = None
+    verify_service_sid: Optional[str] = None
+
 class HospitalResponse(BaseModel):
     id: UUID
     name: str
     status: str
     wizechat_config: Optional[dict] = None
+    twilio_config: Optional[dict] = None
     
     class Config:
         from_attributes = True
 
 class HospitalSettingsUpdate(BaseModel):
     wizechat_config: WizeChatConfig
+
+class HospitalTwilioSettingsUpdate(BaseModel):
+    twilio_config: TwilioConfig
 
 # ============ Super Admin Schemas ============
 class SuperAdminStatsResponse(BaseModel):
