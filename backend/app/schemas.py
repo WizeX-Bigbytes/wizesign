@@ -292,3 +292,10 @@ class SuperAdminStatsResponse(BaseModel):
     total_documents: int
     documents_by_status: dict
     active_hospitals: int
+
+
+class SuperAdminProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None

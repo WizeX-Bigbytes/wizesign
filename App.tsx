@@ -17,6 +17,7 @@ import { SuperAdminLayout } from './components/superadmin/SuperAdminLayout';
 import { SuperAdminDashboard } from './components/superadmin/SuperAdminDashboard';
 import { HospitalManager } from './components/superadmin/HospitalManager';
 import { UserManager } from './components/superadmin/UserManager';
+import { SuperAdminSettings } from './components/superadmin/SuperAdminSettings';
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App: React.FC = () => {
             <Route path="dashboard" element={<SuperAdminDashboard />} />
             <Route path="hospitals" element={<HospitalManager />} />
             <Route path="users" element={<UserManager />} />
+            <Route path="settings" element={<SuperAdminSettings />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
