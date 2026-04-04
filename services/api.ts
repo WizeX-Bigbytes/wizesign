@@ -272,6 +272,15 @@ export const api = {
     return handleResponse<any>(response);
   },
 
+  updateSuperAdminProfile: async (data: { name?: string; email?: string; current_password?: string; new_password?: string }) => {
+    const response = await fetch(`${API_BASE_URL}/superadmin/profile`, {
+      method: 'PATCH',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<any>(response);
+  },
+
   resolveUrl: (url: string) => {
     // If the URL is already absolute, return it
     if (url.startsWith('http')) return url;

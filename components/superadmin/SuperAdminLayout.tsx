@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { Zap, LogOut, LayoutDashboard, Building2, Users } from 'lucide-react';
+import { Zap, LogOut, LayoutDashboard, Building2, Users, Shield } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 
 const SuperAdminSidebar: React.FC = () => {
@@ -20,6 +20,7 @@ const SuperAdminSidebar: React.FC = () => {
         { path: '/superadmin/dashboard', icon: LayoutDashboard, label: 'Platform Stats' },
         { path: '/superadmin/hospitals', icon: Building2, label: 'Tenant Hospitals' },
         { path: '/superadmin/users', icon: Users, label: 'Platform Users' },
+        { path: '/superadmin/settings', icon: Shield, label: 'My Account' },
     ];
 
     return (

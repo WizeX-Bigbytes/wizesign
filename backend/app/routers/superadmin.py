@@ -6,7 +6,7 @@ import uuid
 
 from app.database import get_db
 from app.models import User, Hospital, Document, Patient, RoleEnum
-from app.schemas import SuperAdminStatsResponse, UserResponse, HospitalResponse, HospitalTwilioSettingsUpdate
+from app.schemas import SuperAdminStatsResponse, UserResponse, HospitalResponse, HospitalTwilioSettingsUpdate, SuperAdminProfileUpdate
 from app.routers.auth import get_current_user_from_token
 
 router = APIRouter(prefix="/api/superadmin", tags=["superadmin"])
@@ -133,4 +133,65 @@ async def update_hospital_twilio_config(
     await db.commit()
     await db.refresh(hospital)
     return hospital
+
+
+@router.get("/profile", response_model=UserResponse)
+async def get_superadmin_profile(
+    admin: User = Depends(get_current_superadmin)
+):
+    """Get the current super admin's profile."""
+    return admin
+
+
+@router.patch("/profile", response_model=UserResponse)
+async def update_superadmin_profile(
+    payload: SuperAdminProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_superadmin)
+):
+    """Update profile logic for the current Super Admin (with current password verification)."""
+    # Import locally to avoid circular dependencies if auth uses models too
+    from app.routers.auth import verify_password
+    import bcrypt
+
+    # Determine if they are trying to update password
+    if payload.current_password and payload.new_password:
+        if not admin.hashed_password:
+            raise HTTPException(
+                status_code=400,
+                detail="Account does not have a typical password. Cannot update."
+            )
+
+        # verify current password
+        if not verify_password(payload.current_password, admin.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect current password."
+            )
+        
+        # update password
+        hashed_pw = bcrypt.hashpw(payload.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        admin.hashed_password = hashed_pw
+
+    elif (payload.current_password and not payload.new_password) or (payload.new_password and not payload.current_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Must provide both current_password and new_password to change password."
+        )
+
+    # Update basic info
+    if payload.name:
+        admin.name = payload.name
+    
+    if payload.email:
+        # Check if email is already taken by another user
+        if payload.email != admin.email:
+            result = await db.execute(select(User).where(User.email == payload.email, User.id != admin.id))
+            if result.scalar_one_or_none():
+                 raise HTTPException(status_code=400, detail="Email is already in use by another account.")
+            admin.email = payload.email
+
+    await db.commit()
+    await db.refresh(admin)
+    return admin
 
